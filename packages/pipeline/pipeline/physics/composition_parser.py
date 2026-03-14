@@ -207,12 +207,20 @@ FIBRE_ALIASES: dict[str, str] = {
 
 # Regex patterns to detect and extract percentage + fibre pairs
 # Handles "85% Polyester", "Polyester 85%", "85 % Polyester"
+# Negative lookahead prevents matching temperature indicators like "30°C"
 _PCT_THEN_FIBRE = re.compile(
-    r"(\d{1,3}(?:[.,]\d+)?)\s*%\s+([A-Za-zÀ-ÖØ-öø-ÿ\u4e00-\u9fff][A-Za-zÀ-ÖØ-öø-ÿ\u4e00-\u9fff\s\-]*?)(?=\s*(?:\d|,|;|/|$))",
+    r"(\d{1,3}(?:[.,]\d+)?)\s*%\s+([A-Za-zÀ-ÖØ-öø-ÿ\u4e00-\u9fff][A-Za-zÀ-ÖØ-öø-ÿ\u4e00-\u9fff\s\-]*?)(?=\s*(?:\d|,|;|/|\.|$))",
     re.IGNORECASE,
 )
 _FIBRE_THEN_PCT = re.compile(
-    r"([A-Za-zÀ-ÖØ-öø-ÿ\u4e00-\u9fff][A-Za-zÀ-ÖØ-öø-ÿ\u4e00-\u9fff\s\-]*?)\s+(\d{1,3}(?:[.,]\d+)?)\s*%",
+    r"([A-Za-zÀ-ÖØ-öø-ÿ\u4e00-\u9fff][A-Za-zÀ-ÖØ-öø-ÿ\u4e00-\u9fff\s\-]*?)\s+(\d{1,3}(?:[.,]\d+)?)\s*%(?![°\w])",
+    re.IGNORECASE,
+)
+
+# Matches temperature / non-fibre contexts to strip before parsing
+_WASH_INSTRUCTIONS = re.compile(
+    r'\b(wash|lavar|waschen|laver|lavare|tumble|iron|dry|bleach|cycle|machine|hand|'
+    r'at\s+\d+|à\s+\d+|bei\s+\d+|\d+\s*°[cCfF])\b[^,;]*',
     re.IGNORECASE,
 )
 
@@ -266,6 +274,8 @@ class CompositionParser:
 
         # --- Pre-processing ---
         text = raw.strip()
+        # Strip wash/care instructions so "30°C" doesn't get parsed as "30% C"
+        text = _WASH_INSTRUCTIONS.sub(" ", text)
         # Replace common separators with comma for uniform parsing
         text = re.sub(r"[;\|/]", ",", text)
         # Normalize percent symbols
@@ -305,12 +315,15 @@ class CompositionParser:
                 total = 100.0
 
         # --- Confidence score ---
-        known_count = sum(1 for _, _, k in resolved)
+        known_count = sum(1 for _, _, k in resolved if k)
         base_conf = known_count / len(resolved)
         # Penalize if sum was way off
         if abs(total - 100.0) > 5:
             base_conf *= 0.9
-        # Penalize for multiple unknowns
+        # Penalize for unknown fibres weighted by their percentage contribution
+        for name, pct, known in resolved:
+            if not known:
+                base_conf -= (pct / 100.0) * 0.5  # Unknown at X% removes X/200 from confidence
         confidence = round(min(1.0, max(0.0, base_conf)), 4)
 
         # --- Build output ---

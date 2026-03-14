@@ -291,17 +291,22 @@ class LGMTExporter:
         return h.hexdigest()
 
     def _update_checksum(self, lgmt_path: Path, checksum: str) -> None:
-        """Update the checksum in manifest.json within the archive."""
+        """Update the checksum in manifest.json by rebuilding the archive."""
+        import io
+        import shutil
         try:
-            import io
-            with zipfile.ZipFile(lgmt_path, "a") as zf:
-                if "manifest.json" in zf.namelist():
-                    with zf.open("manifest.json") as f:
-                        manifest = json.load(f)
-                    manifest["checksum_sha256"] = checksum
-                    # Replace manifest in archive
-                    # Note: ZipFile append mode can create duplicates; in production,
-                    # rebuild the archive from scratch for clean manifests
-                    zf.writestr("manifest.json", json.dumps(manifest, indent=2))
+            tmp_path = lgmt_path.with_suffix(".lgmt.tmp")
+            with zipfile.ZipFile(lgmt_path, "r") as zin, \
+                 zipfile.ZipFile(tmp_path, "w", zipfile.ZIP_DEFLATED) as zout:
+                for item in zin.infolist():
+                    data = zin.read(item.filename)
+                    if item.filename == "manifest.json":
+                        manifest = json.loads(data)
+                        manifest["checksum_sha256"] = checksum
+                        data = json.dumps(manifest, indent=2).encode("utf-8")
+                    zout.writestr(item, data)
+            shutil.move(str(tmp_path), str(lgmt_path))
         except Exception as e:
             logger.warning(f"Could not update checksum: {e}")
+            if tmp_path.exists():
+                tmp_path.unlink(missing_ok=True)
