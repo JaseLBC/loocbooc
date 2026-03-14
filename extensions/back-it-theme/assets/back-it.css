@@ -1,0 +1,464 @@
+/**
+ * back-it.css — Loocbooc "Back It" Widget Styles
+ * ================================================
+ * Design philosophy:
+ *   - Inherit the theme's CSS custom properties wherever possible
+ *   - Provide tasteful defaults that look good on any Shopify theme
+ *   - All layout uses modern CSS (flexbox, grid, custom properties)
+ *   - No !important — specificity is managed by the .back-it- namespace
+ *   - Reduced motion respected via prefers-reduced-motion
+ *
+ * Customisation:
+ *   Override the --back-it-* custom properties in your theme.css to
+ *   match your brand. No need to touch this file.
+ */
+
+/* ---------------------------------------------------------------------------
+   Custom properties (overrideable per-brand)
+--------------------------------------------------------------------------- */
+
+.back-it-widget {
+  /* Colours — fall back to theme variables if defined, else our own defaults */
+  --back-it-color-primary: var(--color-button, #1a1a1a);
+  --back-it-color-primary-text: var(--color-button-text, #ffffff);
+  --back-it-color-accent: var(--color-accent, #4a7c59);
+  --back-it-color-bg: var(--color-background, #ffffff);
+  --back-it-color-surface: var(--color-card-background, #f8f8f8);
+  --back-it-color-border: var(--color-border, #e5e5e5);
+  --back-it-color-text: var(--color-foreground, #1a1a1a);
+  --back-it-color-text-muted: var(--color-foreground-secondary, #6b6b6b);
+  --back-it-color-success: #2d7d46;
+  --back-it-color-success-bg: #f0faf4;
+  --back-it-color-error: #c0392b;
+
+  /* Typography */
+  --back-it-font-body: var(--font-body-family, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
+  --back-it-font-size-sm: 0.875rem;
+  --back-it-font-size-base: 1rem;
+  --back-it-font-size-lg: 1.125rem;
+  --back-it-font-size-xl: 1.5rem;
+  --back-it-font-weight-normal: 400;
+  --back-it-font-weight-medium: 500;
+  --back-it-font-weight-bold: 700;
+
+  /* Spacing */
+  --back-it-space-xs: 0.25rem;
+  --back-it-space-sm: 0.5rem;
+  --back-it-space-md: 1rem;
+  --back-it-space-lg: 1.5rem;
+  --back-it-space-xl: 2rem;
+
+  /* Borders */
+  --back-it-radius: var(--buttons-radius, 4px);
+  --back-it-radius-sm: 2px;
+
+  /* Progress bar */
+  --back-it-progress-height: 8px;
+  --back-it-progress-bg: var(--back-it-color-border);
+  --back-it-progress-fill: var(--back-it-color-accent);
+  --back-it-progress-radius: 100px;
+
+  /* Animation */
+  --back-it-transition: 0.25s ease;
+}
+
+/* ---------------------------------------------------------------------------
+   Widget container
+--------------------------------------------------------------------------- */
+
+.back-it-widget {
+  font-family: var(--back-it-font-body);
+  color: var(--back-it-color-text);
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+
+.back-it-widget *,
+.back-it-widget *::before,
+.back-it-widget *::after {
+  box-sizing: inherit;
+}
+
+.back-it-inner {
+  border: 1px solid var(--back-it-color-border);
+  border-radius: var(--back-it-radius);
+  overflow: hidden;
+  background: var(--back-it-color-bg);
+}
+
+/* ---------------------------------------------------------------------------
+   Hero image
+--------------------------------------------------------------------------- */
+
+.back-it-hero {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: var(--back-it-color-surface);
+}
+
+.back-it-hero__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform var(--back-it-transition);
+}
+
+.back-it-hero__img:hover {
+  transform: scale(1.02);
+}
+
+/* ---------------------------------------------------------------------------
+   Body
+--------------------------------------------------------------------------- */
+
+.back-it-body {
+  padding: var(--back-it-space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--back-it-space-md);
+}
+
+/* ---------------------------------------------------------------------------
+   Header (badge + price)
+--------------------------------------------------------------------------- */
+
+.back-it-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--back-it-space-sm);
+}
+
+.back-it-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--back-it-space-xs);
+  padding: var(--back-it-space-xs) var(--back-it-space-sm);
+  border-radius: 100px;
+  font-size: var(--back-it-font-size-sm);
+  font-weight: var(--back-it-font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.back-it-badge--active {
+  background: var(--back-it-color-success-bg);
+  color: var(--back-it-color-success);
+  border: 1px solid currentColor;
+}
+
+.back-it-badge--active::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+  border-radius: 50%;
+  animation: back-it-pulse 1.5s ease infinite;
+}
+
+.back-it-badge--success {
+  background: var(--back-it-color-success);
+  color: #fff;
+}
+
+.back-it-price {
+  font-size: var(--back-it-font-size-xl);
+  font-weight: var(--back-it-font-weight-bold);
+  margin: 0;
+  color: var(--back-it-color-text);
+}
+
+/* ---------------------------------------------------------------------------
+   Description
+--------------------------------------------------------------------------- */
+
+.back-it-description {
+  font-size: var(--back-it-font-size-base);
+  color: var(--back-it-color-text-muted);
+  margin: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Progress bar
+--------------------------------------------------------------------------- */
+
+.back-it-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--back-it-space-xs);
+}
+
+.back-it-progress__bar-wrap {
+  height: var(--back-it-progress-height);
+  background: var(--back-it-progress-bg);
+  border-radius: var(--back-it-progress-radius);
+  overflow: hidden;
+}
+
+.back-it-progress__bar {
+  height: 100%;
+  background: var(--back-it-progress-fill);
+  border-radius: var(--back-it-progress-radius);
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 2px; /* always visible even at 0% */
+}
+
+.back-it-progress__meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--back-it-font-size-sm);
+  color: var(--back-it-color-text-muted);
+}
+
+.back-it-backers {
+  font-weight: var(--back-it-font-weight-medium);
+  color: var(--back-it-color-text);
+  transition: color var(--back-it-transition);
+}
+
+/* Flash animation on counter update */
+.back-it-backers--updated {
+  color: var(--back-it-color-accent);
+}
+
+/* ---------------------------------------------------------------------------
+   Ship date
+--------------------------------------------------------------------------- */
+
+.back-it-ship-date {
+  font-size: var(--back-it-font-size-sm);
+  color: var(--back-it-color-text-muted);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--back-it-space-xs);
+}
+
+.back-it-ship-date::before {
+  content: "📦";
+  font-size: 1em;
+}
+
+/* ---------------------------------------------------------------------------
+   Size selector
+--------------------------------------------------------------------------- */
+
+.back-it-size-selector {
+  display: flex;
+  flex-direction: column;
+  gap: var(--back-it-space-sm);
+}
+
+.back-it-size-selector__label {
+  font-size: var(--back-it-font-size-sm);
+  font-weight: var(--back-it-font-weight-medium);
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--back-it-color-text-muted);
+}
+
+.back-it-size-selector__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--back-it-space-sm);
+}
+
+.back-it-size-option {
+  cursor: pointer;
+}
+
+.back-it-size-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.back-it-size-option span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.5rem;
+  height: 2.5rem;
+  padding: 0 var(--back-it-space-sm);
+  border: 1.5px solid var(--back-it-color-border);
+  border-radius: var(--back-it-radius);
+  font-size: var(--back-it-font-size-sm);
+  font-weight: var(--back-it-font-weight-medium);
+  transition: all var(--back-it-transition);
+  user-select: none;
+}
+
+.back-it-size-option input[type="radio"]:checked + span {
+  border-color: var(--back-it-color-primary);
+  background: var(--back-it-color-primary);
+  color: var(--back-it-color-primary-text);
+}
+
+.back-it-size-option:hover span {
+  border-color: var(--back-it-color-primary);
+}
+
+.back-it-size-option input[type="radio"]:focus-visible + span {
+  outline: 2px solid var(--back-it-color-primary);
+  outline-offset: 2px;
+}
+
+.back-it-size-error {
+  color: var(--back-it-color-error);
+  font-size: var(--back-it-font-size-sm);
+  margin: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   CTA button
+--------------------------------------------------------------------------- */
+
+.back-it-cta {
+  display: block;
+  width: 100%;
+  padding: var(--back-it-space-md) var(--back-it-space-lg);
+  background: var(--back-it-color-primary);
+  color: var(--back-it-color-primary-text);
+  border: none;
+  border-radius: var(--back-it-radius);
+  font-family: inherit;
+  font-size: var(--back-it-font-size-base);
+  font-weight: var(--back-it-font-weight-bold);
+  text-align: center;
+  cursor: pointer;
+  transition: opacity var(--back-it-transition), transform var(--back-it-transition);
+  letter-spacing: 0.03em;
+}
+
+.back-it-cta:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.back-it-cta:active:not(:disabled) {
+  transform: scale(0.99);
+}
+
+.back-it-cta:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------------------------------------------------------------------------
+   Campaign closed / error states
+--------------------------------------------------------------------------- */
+
+.back-it-closed {
+  font-size: var(--back-it-font-size-sm);
+  color: var(--back-it-color-text-muted);
+  text-align: center;
+  margin: 0;
+  padding: var(--back-it-space-md);
+  background: var(--back-it-color-surface);
+  border-radius: var(--back-it-radius);
+}
+
+.back-it-error {
+  padding: var(--back-it-space-md);
+  color: var(--back-it-color-error);
+  font-size: var(--back-it-font-size-sm);
+  text-align: center;
+}
+
+/* ---------------------------------------------------------------------------
+   Skeleton loading state
+--------------------------------------------------------------------------- */
+
+.back-it-skeleton {
+  padding: var(--back-it-space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--back-it-space-md);
+  animation: back-it-shimmer 1.5s infinite linear;
+  background: linear-gradient(
+    90deg,
+    var(--back-it-color-surface) 25%,
+    var(--back-it-color-border) 50%,
+    var(--back-it-color-surface) 75%
+  );
+  background-size: 200% 100%;
+}
+
+.back-it-skeleton__hero {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: var(--back-it-color-border);
+  border-radius: var(--back-it-radius);
+}
+
+.back-it-skeleton__bar {
+  height: var(--back-it-progress-height);
+  background: var(--back-it-color-border);
+  border-radius: var(--back-it-progress-radius);
+}
+
+.back-it-skeleton__sizes {
+  display: flex;
+  gap: var(--back-it-space-sm);
+}
+
+.back-it-skeleton__sizes::before,
+.back-it-skeleton__sizes::after {
+  content: "";
+  width: 2.5rem;
+  height: 2.5rem;
+  background: var(--back-it-color-border);
+  border-radius: var(--back-it-radius);
+}
+
+.back-it-skeleton__cta {
+  height: 3rem;
+  background: var(--back-it-color-border);
+  border-radius: var(--back-it-radius);
+}
+
+/* ---------------------------------------------------------------------------
+   Screen reader utility
+--------------------------------------------------------------------------- */
+
+.back-it-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Animations
+--------------------------------------------------------------------------- */
+
+@keyframes back-it-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes back-it-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .back-it-badge--active::before {
+    animation: none;
+  }
+  .back-it-skeleton {
+    animation: none;
+  }
+  .back-it-progress__bar {
+    transition: none;
+  }
+}

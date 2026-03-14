@@ -1,0 +1,30 @@
+{
+  "name": "@loocbooc/web",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Loocbooc consumer + brand + manufacturer web frontend — Next.js 14 App Router.",
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@loocbooc/types": "workspace:*",
+    "@loocbooc/utils": "workspace:*",
+    "@stripe/react-stripe-js": "^2.4.0",
+    "@stripe/stripe-js": "^3.0.0",
+    "@supabase/supabase-js": "^2.40.0",
+    "@supabase/ssr": "^0.3.0",
+    "next": "14.1.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "typescript": "^5.3.3"
+  }
+}

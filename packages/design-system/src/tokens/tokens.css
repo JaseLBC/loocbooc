@@ -1,0 +1,271 @@
+/**
+ * Loocbooc Design Tokens
+ * CSS Custom Properties — light mode (default)
+ * Every value maps directly to the design principles document.
+ *
+ * DO NOT use raw values in components. Always use these tokens.
+ */
+
+:root {
+  /* ─── BRAND COLOURS ─────────────────────────────────────────── */
+  --loocbooc-black:     #0A0A0A;
+  --loocbooc-white:     #FAFAFA;
+  --loocbooc-accent:    #C8B49A;   /* warm sand — the fashion accent */
+  --loocbooc-accent-light: #DDD0BC;
+  --loocbooc-accent-dark:  #A8946C;
+
+  /* ─── SEMANTIC COLOURS ──────────────────────────────────────── */
+  --color-success:      #22C55E;
+  --color-success-bg:   #F0FDF4;
+  --color-success-border: #BBF7D0;
+
+  --color-warning:      #F59E0B;
+  --color-warning-bg:   #FFFBEB;
+  --color-warning-border: #FDE68A;
+
+  --color-error:        #EF4444;
+  --color-error-bg:     #FEF2F2;
+  --color-error-border: #FECACA;
+
+  --color-info:         #3B82F6;
+  --color-info-bg:      #EFF6FF;
+  --color-info-border:  #BFDBFE;
+
+  /* ─── SURFACE COLOURS ───────────────────────────────────────── */
+  --surface-0:          #FFFFFF;   /* page background */
+  --surface-1:          #FFFFFF;   /* cards, primary surfaces */
+  --surface-2:          #F5F5F5;   /* secondary surfaces, input backgrounds */
+  --surface-3:          #EBEBEB;   /* borders, dividers */
+  --surface-4:          #D4D4D4;   /* stronger borders */
+  --surface-overlay:    rgba(0, 0, 0, 0.40);  /* modal backdrop */
+
+  /* ─── TEXT COLOURS ──────────────────────────────────────────── */
+  --text-primary:       #0A0A0A;
+  --text-secondary:     #6B7280;
+  --text-tertiary:      #9CA3AF;
+  --text-inverse:       #FAFAFA;
+  --text-on-accent:     #FAFAFA;
+  --text-disabled:      #D1D5DB;
+  --text-link:          #0A0A0A;
+  --text-link-hover:    #C8B49A;
+
+  /* ─── INTERACTIVE COLOURS ───────────────────────────────────── */
+  --interactive-primary:       #0A0A0A;
+  --interactive-primary-hover: #1F1F1F;
+  --interactive-primary-active:#3A3A3A;
+  --interactive-primary-text:  #FAFAFA;
+
+  --interactive-secondary:       #FAFAFA;
+  --interactive-secondary-hover: #F5F5F5;
+  --interactive-secondary-active:#EBEBEB;
+  --interactive-secondary-border:#0A0A0A;
+  --interactive-secondary-text:  #0A0A0A;
+
+  --interactive-ghost-hover:   rgba(10, 10, 10, 0.06);
+  --interactive-ghost-active:  rgba(10, 10, 10, 0.10);
+
+  --interactive-danger:        #EF4444;
+  --interactive-danger-hover:  #DC2626;
+  --interactive-danger-active: #B91C1C;
+  --interactive-danger-text:   #FFFFFF;
+
+  --interactive-accent:        #C8B49A;
+  --interactive-accent-hover:  #A8946C;
+  --interactive-accent-text:   #FAFAFA;
+
+  /* ─── FOCUS ─────────────────────────────────────────────────── */
+  --focus-ring:         0 0 0 3px rgba(200, 180, 154, 0.50);
+  --focus-ring-danger:  0 0 0 3px rgba(239, 68, 68, 0.30);
+
+  /* ─── TYPOGRAPHY ────────────────────────────────────────────── */
+  --font-display: 'DM Serif Display', Georgia, serif;
+  --font-body:    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono:    'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+
+  /* Font size scale — 4px base, following the spec */
+  --text-xs:   12px;
+  --text-sm:   14px;
+  --text-base: 16px;
+  --text-lg:   20px;
+  --text-xl:   24px;
+  --text-2xl:  32px;
+  --text-3xl:  48px;
+  --text-4xl:  64px;
+  --text-5xl:  80px;
+
+  /* Line heights */
+  --leading-tight:  1.2;   /* headings */
+  --leading-snug:   1.4;   /* subheadings */
+  --leading-normal: 1.6;   /* body */
+  --leading-loose:  1.8;   /* relaxed reading */
+
+  /* Font weights */
+  --weight-regular:   400;
+  --weight-medium:    500;
+  --weight-semibold:  600;
+  --weight-bold:      700;
+
+  /* Letter spacing */
+  --tracking-tight:  -0.025em;
+  --tracking-normal:  0;
+  --tracking-wide:    0.025em;
+  --tracking-wider:   0.05em;
+  --tracking-widest:  0.1em;
+
+  /* ─── SPACING ────────────────────────────────────────────────── */
+  --space-0:   0;
+  --space-1:   4px;
+  --space-2:   8px;
+  --space-3:   12px;
+  --space-4:   16px;
+  --space-6:   24px;
+  --space-8:   32px;
+  --space-12:  48px;
+  --space-16:  64px;
+  --space-24:  96px;
+
+  /* ─── BORDER RADIUS ──────────────────────────────────────────── */
+  --radius-none: 0;
+  --radius-sm:   4px;
+  --radius-md:   8px;
+  --radius-lg:   16px;
+  --radius-xl:   24px;
+  --radius-full: 9999px;
+
+  /* ─── SHADOWS / ELEVATION ───────────────────────────────────── */
+  --shadow-0: none;
+  --shadow-1: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-2: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+  --shadow-3: 0 10px 15px rgba(0,0,0,0.10), 0 4px 6px rgba(0,0,0,0.05);
+  --shadow-4: 0 20px 25px rgba(0,0,0,0.10), 0 10px 10px rgba(0,0,0,0.04);
+  --shadow-modal: 0 32px 64px rgba(0,0,0,0.20), 0 16px 32px rgba(0,0,0,0.10);
+
+  /* ─── MOTION ─────────────────────────────────────────────────── */
+  --duration-fast:   150ms;
+  --duration-normal: 250ms;
+  --duration-slow:   400ms;
+  --duration-enter:  350ms;
+  --duration-exit:   200ms;
+
+  --ease-standard:   cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-decelerate: cubic-bezier(0, 0, 0.2, 1);
+  --ease-accelerate: cubic-bezier(0.4, 0, 1, 1);
+  --ease-spring:     cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ─── Z-INDEX SCALE ──────────────────────────────────────────── */
+  --z-below:    -1;
+  --z-base:      0;
+  --z-raised:    10;
+  --z-dropdown:  100;
+  --z-sticky:    200;
+  --z-overlay:   300;
+  --z-modal:     400;
+  --z-toast:     500;
+  --z-tooltip:   600;
+
+  /* ─── LAYOUT ─────────────────────────────────────────────────── */
+  --container-sm:  640px;
+  --container-md:  768px;
+  --container-lg:  1024px;
+  --container-xl:  1280px;
+  --container-2xl: 1536px;
+
+  /* ─── TOUCH TARGET ───────────────────────────────────────────── */
+  --touch-target-min: 44px;   /* Apple HIG minimum */
+
+  /* ─── BACKDROP BLUR ──────────────────────────────────────────── */
+  --blur-sm:  4px;
+  --blur-md:  12px;
+  --blur-lg:  24px;
+  --blur-xl:  40px;
+}
+
+/* ─── DARK MODE ───────────────────────────────────────────────────
+   Applied via .dark class on <html> element (see ThemeProvider).
+   Every token has a dark variant. Built from day one, not retrofitted.
+   ─────────────────────────────────────────────────────────────── */
+.dark {
+  /* Brand */
+  --loocbooc-white:     #0A0A0A;
+  --loocbooc-black:     #FAFAFA;
+
+  /* Semantic — same hue, adjusted for dark bg */
+  --color-success:      #4ADE80;
+  --color-success-bg:   #052E16;
+  --color-success-border: #166534;
+
+  --color-warning:      #FCD34D;
+  --color-warning-bg:   #1C1400;
+  --color-warning-border: #78350F;
+
+  --color-error:        #F87171;
+  --color-error-bg:     #1C0101;
+  --color-error-border: #7F1D1D;
+
+  --color-info:         #60A5FA;
+  --color-info-bg:      #0D1B2E;
+  --color-info-border:  #1E3A5F;
+
+  /* Surfaces */
+  --surface-0:          #0A0A0A;
+  --surface-1:          #141414;
+  --surface-2:          #1F1F1F;
+  --surface-3:          #2A2A2A;
+  --surface-4:          #3A3A3A;
+  --surface-overlay:    rgba(0, 0, 0, 0.65);
+
+  /* Text */
+  --text-primary:       #FAFAFA;
+  --text-secondary:     #9CA3AF;
+  --text-tertiary:      #6B7280;
+  --text-inverse:       #0A0A0A;
+  --text-on-accent:     #0A0A0A;
+  --text-disabled:      #374151;
+  --text-link:          #FAFAFA;
+  --text-link-hover:    #C8B49A;
+
+  /* Interactive */
+  --interactive-primary:       #FAFAFA;
+  --interactive-primary-hover: #EBEBEB;
+  --interactive-primary-active:#D4D4D4;
+  --interactive-primary-text:  #0A0A0A;
+
+  --interactive-secondary:       #141414;
+  --interactive-secondary-hover: #1F1F1F;
+  --interactive-secondary-active:#2A2A2A;
+  --interactive-secondary-border:#FAFAFA;
+  --interactive-secondary-text:  #FAFAFA;
+
+  --interactive-ghost-hover:   rgba(250, 250, 250, 0.06);
+  --interactive-ghost-active:  rgba(250, 250, 250, 0.10);
+
+  --interactive-danger:        #F87171;
+  --interactive-danger-hover:  #EF4444;
+  --interactive-danger-active: #DC2626;
+  --interactive-danger-text:   #FFFFFF;
+
+  /* Focus */
+  --focus-ring:         0 0 0 3px rgba(200, 180, 154, 0.40);
+
+  /* Shadows — slightly more visible in dark mode */
+  --shadow-1: 0 1px 3px rgba(0,0,0,0.30), 0 1px 2px rgba(0,0,0,0.20);
+  --shadow-2: 0 4px 6px rgba(0,0,0,0.40), 0 2px 4px rgba(0,0,0,0.30);
+  --shadow-3: 0 10px 15px rgba(0,0,0,0.50), 0 4px 6px rgba(0,0,0,0.30);
+  --shadow-4: 0 20px 25px rgba(0,0,0,0.60), 0 10px 10px rgba(0,0,0,0.40);
+  --shadow-modal: 0 32px 64px rgba(0,0,0,0.80), 0 16px 32px rgba(0,0,0,0.60);
+}
+
+/* ─── BASE RESET ──────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* Respect reduced-motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

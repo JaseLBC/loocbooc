@@ -1,0 +1,1 @@
+"""Loocbooc API application package."""

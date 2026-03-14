@@ -1,0 +1,812 @@
+{
+  "version": "1.0",
+  "lastUpdated": "March 2026",
+  "renderModes": ["form", "poll", "conversational"],
+  "stakeholders": [
+
+    {
+      "id": "manufacturer",
+      "label": "Manufacturer",
+      "tagline": "Tell us about your factory",
+      "description": "Help us connect you with the right brands and designers.",
+      "estimatedMinutes": 8,
+      "sections": [
+        {
+          "id": "basics",
+          "title": "The Basics",
+          "questions": [
+            {
+              "id": "mfr_country",
+              "type": "single_choice",
+              "question": "Where is your factory located?",
+              "required": true,
+              "options": [
+                { "id": "china", "label": "China" },
+                { "id": "bangladesh", "label": "Bangladesh" },
+                { "id": "vietnam", "label": "Vietnam" },
+                { "id": "india", "label": "India" },
+                { "id": "turkey", "label": "Turkey" },
+                { "id": "portugal", "label": "Portugal" },
+                { "id": "italy", "label": "Italy" },
+                { "id": "australia", "label": "Australia" },
+                { "id": "other", "label": "Somewhere else", "followUp": "mfr_country_other" }
+              ]
+            },
+            {
+              "id": "mfr_country_other",
+              "type": "text",
+              "question": "Which country?",
+              "required": false,
+              "conditional": { "questionId": "mfr_country", "value": "other" }
+            },
+            {
+              "id": "mfr_capacity",
+              "type": "single_choice",
+              "question": "What is your monthly production capacity?",
+              "required": true,
+              "options": [
+                { "id": "under_1k", "label": "Under 1,000 units" },
+                { "id": "1k_5k", "label": "1,000 – 5,000 units" },
+                { "id": "5k_20k", "label": "5,000 – 20,000 units" },
+                { "id": "20k_100k", "label": "20,000 – 100,000 units" },
+                { "id": "over_100k", "label": "Over 100,000 units" }
+              ]
+            },
+            {
+              "id": "mfr_years",
+              "type": "single_choice",
+              "question": "How long have you been in operation?",
+              "required": true,
+              "options": [
+                { "id": "under_2", "label": "Under 2 years" },
+                { "id": "2_5", "label": "2 – 5 years" },
+                { "id": "5_10", "label": "5 – 10 years" },
+                { "id": "10_20", "label": "10 – 20 years" },
+                { "id": "over_20", "label": "Over 20 years" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "specialisation",
+          "title": "What You Make",
+          "questions": [
+            {
+              "id": "mfr_categories",
+              "type": "multi_choice",
+              "question": "What garment categories do you specialise in? Select all that apply.",
+              "required": true,
+              "multiSelect": true,
+              "options": [
+                { "id": "wovens", "label": "Wovens (shirts, trousers, dresses)" },
+                { "id": "knitwear", "label": "Knitwear (sweaters, cardigans)" },
+                { "id": "jersey", "label": "Jersey / T-shirts / Casual" },
+                { "id": "denim", "label": "Denim" },
+                { "id": "outerwear", "label": "Outerwear / Jackets / Coats" },
+                { "id": "swimwear", "label": "Swimwear / Activewear" },
+                { "id": "lingerie", "label": "Lingerie / Intimates" },
+                { "id": "accessories", "label": "Accessories" },
+                { "id": "footwear", "label": "Footwear" },
+                { "id": "leather", "label": "Leather goods" }
+              ]
+            },
+            {
+              "id": "mfr_moq",
+              "type": "single_choice",
+              "question": "What is your minimum order quantity (MOQ) per style?",
+              "required": true,
+              "options": [
+                { "id": "under_50", "label": "Under 50 units" },
+                { "id": "50_100", "label": "50 – 100 units" },
+                { "id": "100_300", "label": "100 – 300 units" },
+                { "id": "300_500", "label": "300 – 500 units" },
+                { "id": "500_1000", "label": "500 – 1,000 units" },
+                { "id": "over_1000", "label": "Over 1,000 units" }
+              ]
+            },
+            {
+              "id": "mfr_lead_sample",
+              "type": "single_choice",
+              "question": "What is your typical sampling lead time?",
+              "required": true,
+              "options": [
+                { "id": "under_2w", "label": "Under 2 weeks" },
+                { "id": "2_4w", "label": "2 – 4 weeks" },
+                { "id": "4_6w", "label": "4 – 6 weeks" },
+                { "id": "6_10w", "label": "6 – 10 weeks" },
+                { "id": "over_10w", "label": "Over 10 weeks" }
+              ]
+            },
+            {
+              "id": "mfr_lead_bulk",
+              "type": "single_choice",
+              "question": "What is your typical bulk production lead time once approved?",
+              "required": true,
+              "options": [
+                { "id": "under_4w", "label": "Under 4 weeks" },
+                { "id": "4_8w", "label": "4 – 8 weeks" },
+                { "id": "8_12w", "label": "8 – 12 weeks" },
+                { "id": "12_16w", "label": "12 – 16 weeks" },
+                { "id": "over_16w", "label": "Over 16 weeks" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "capabilities",
+          "title": "Your Capabilities",
+          "questions": [
+            {
+              "id": "mfr_certifications",
+              "type": "multi_choice",
+              "question": "Do you hold any of these certifications?",
+              "required": false,
+              "multiSelect": true,
+              "options": [
+                { "id": "gots", "label": "GOTS (Global Organic Textile Standard)" },
+                { "id": "oeko_tex", "label": "OEKO-TEX Standard 100" },
+                { "id": "bsci", "label": "BSCI / Sedex audit" },
+                { "id": "grs", "label": "GRS (Global Recycled Standard)" },
+                { "id": "fair_trade", "label": "Fair Trade Certified" },
+                { "id": "iso", "label": "ISO 9001 Quality Management" },
+                { "id": "none", "label": "None currently" }
+              ]
+            },
+            {
+              "id": "mfr_tech_pack",
+              "type": "single_choice",
+              "question": "How do you currently receive tech packs from brands?",
+              "required": true,
+              "options": [
+                { "id": "email_pdf", "label": "Email / PDF" },
+                { "id": "excel", "label": "Excel / Google Sheets" },
+                { "id": "plm_software", "label": "PLM software (Centric, etc.)" },
+                { "id": "whatsapp", "label": "WhatsApp / messaging apps" },
+                { "id": "mix", "label": "A mix of the above" }
+              ]
+            },
+            {
+              "id": "mfr_materials",
+              "type": "multi_choice",
+              "question": "What materials do you work with most frequently?",
+              "required": true,
+              "multiSelect": true,
+              "options": [
+                { "id": "cotton", "label": "Cotton" },
+                { "id": "linen", "label": "Linen" },
+                { "id": "polyester", "label": "Polyester" },
+                { "id": "viscose", "label": "Viscose / Rayon" },
+                { "id": "wool", "label": "Wool" },
+                { "id": "silk", "label": "Silk" },
+                { "id": "denim_fabric", "label": "Denim fabric" },
+                { "id": "sustainable", "label": "Sustainable / recycled fabrics" },
+                { "id": "leather_mat", "label": "Leather" },
+                { "id": "technical", "label": "Technical / performance fabrics" }
+              ]
+            },
+            {
+              "id": "mfr_pain_points",
+              "type": "multi_choice",
+              "question": "What are your biggest frustrations working with brands?",
+              "required": true,
+              "multiSelect": true,
+              "options": [
+                { "id": "unclear_specs", "label": "Unclear or incomplete tech packs" },
+                { "id": "late_feedback", "label": "Late feedback on samples" },
+                { "id": "payment_terms", "label": "Difficult payment terms" },
+                { "id": "last_minute", "label": "Last-minute order changes" },
+                { "id": "finding_brands", "label": "Finding new brand clients" },
+                { "id": "moq_pressure", "label": "Brands pushing MOQ too low" },
+                { "id": "communication", "label": "Poor communication / language barriers" },
+                { "id": "ghosting", "label": "Brands ghosting after sampling" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "market",
+          "title": "Your Market",
+          "questions": [
+            {
+              "id": "mfr_price_tier",
+              "type": "single_choice",
+              "question": "What price tier do you primarily manufacture for?",
+              "required": true,
+              "options": [
+                { "id": "mass", "label": "Mass market (high volume, low cost)" },
+                { "id": "mid", "label": "Mid-market" },
+                { "id": "premium", "label": "Premium / Contemporary" },
+                { "id": "luxury", "label": "Luxury" },
+                { "id": "mix_tiers", "label": "We work across multiple tiers" }
+              ]
+            },
+            {
+              "id": "mfr_export_markets",
+              "type": "multi_choice",
+              "question": "Which markets do you currently export to?",
+              "required": true,
+              "multiSelect": true,
+              "options": [
+                { "id": "australia", "label": "Australia" },
+                { "id": "usa", "label": "USA" },
+                { "id": "uk", "label": "UK" },
+                { "id": "europe", "label": "Europe" },
+                { "id": "middle_east", "label": "Middle East" },
+                { "id": "asia", "label": "Asia Pacific" },
+                { "id": "domestic_only", "label": "Domestic only" }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "id": "brand",
+      "label": "Brand / Retailer",
+      "tagline": "Tell us about your brand",
+      "description": "We'll personalise your Loocbooc experience and connect you with the right manufacturers.",
+      "estimatedMinutes": 7,
+      "sections": [
+        {
+          "id": "brand_basics",
+          "title": "Your Brand",
+          "questions": [
+            {
+              "id": "brand_category",
+              "type": "multi_choice",
+              "question": "What does your brand sell?",
+              "required": true,
+              "multiSelect": true,
+              "options": [
+                { "id": "womens", "label": "Women's fashion" },
+                { "id": "mens", "label": "Men's fashion" },
+                { "id": "unisex", "label": "Unisex / Gender-neutral" },
+                { "id": "kids", "label": "Kids / Childrenswear" },
+                { "id": "activewear", "label": "Activewear" },
+                { "id": "swimwear_brand", "label": "Swimwear" },
+                { "id": "accessories_brand", "label": "Accessories" },
+                { "id": "footwear_brand", "label": "Footwear" }
+              ]
+            },
+            {
+              "id": "brand_stage",
+              "type": "single_choice",
+              "question": "Where is your brand right now?",
+              "required": true,
+              "options": [
+                { "id": "concept", "label": "Concept stage — haven't launched yet" },
+                { "id": "early", "label": "Early stage — launched, under $500K revenue" },
+                { "id": "growing", "label": "Growing — $500K to $5M revenue" },
+                { "id": "scaling", "label": "Scaling — $5M to $25M revenue" },
+                { "id": "established", "label": "Established — over $25M revenue" }
+              ]
+            },
+            {
+              "id": "brand_volume",
+              "type": "single_choice",
+              "question": "How many styles do you drop per month?",
+              "required": true,
+              "options": [
+                { "id": "under_10", "label": "Under 10 styles" },
+                { "id": "10_30", "label": "10 – 30 styles" },
+                { "id": "30_60", "label": "30 – 60 styles" },
+                { "id": "60_100", "label": "60 – 100 styles" },
+                { "id": "over_100", "label": "Over 100 styles" }
+              ]
+            },
+            {
+              "id": "brand_price_point",
+              "type": "single_choice",
+              "question": "What is your average retail price point?",
+              "required": true,
+              "options": [
+                { "id": "under_50", "label": "Under $50" },
+                { "id": "50_100", "label": "$50 – $100" },
+                { "id": "100_200", "label": "$100 – $200" },
+                { "id": "200_500", "label": "$200 – $500" },
+                { "id": "over_500", "label": "Over $500" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "production",
+          "title": "Your Production Process",
+          "questions": [
+            {
+              "id": "brand_manufacturers",
+              "type": "single_choice",
+              "question": "How do you currently find manufacturers?",
+              "required": true,
+              "options": [
+                { "id": "existing_relationships", "label": "Established relationships — same factories for years" },
+                { "id": "trade_shows", "label": "Trade shows and industry events" },
+                { "id": "referrals", "label": "Referrals from other brands" },
+                { "id": "alibaba_platform", "label": "Alibaba or online sourcing platforms" },
+                { "id": "agents", "label": "Sourcing agents" },
+                { "id": "struggle", "label": "It's a constant struggle — major pain point" }
+              ]
+            },
+            {
+              "id": "brand_tech_pack",
+              "type": "single_choice",
+              "question": "How do you currently create and manage tech packs?",
+              "required": true,
+              "options": [
+                { "id": "illustrator", "label": "Adobe Illustrator / manual process" },
+                { "id": "excel_sheets", "label": "Excel / Google Sheets" },
+                { "id": "plm_tool", "label": "PLM software" },
+                { "id": "email_based", "label": "Mostly email-based, ad hoc" },
+                { "id": "outsourced", "label": "We outsource to a garment tech" },
+                { "id": "no_process", "label": "We don't have a formal process" }
+              ]
+            },
+            {
+              "id": "brand_pain_points",
+              "type": "multi_choice",
+              "question": "What are your biggest production headaches?",
+              "required": true,
+              "multiSelect": true,
+              "options": [
+                { "id": "overproduction", "label": "Overproduction — styles that don't sell" },
+                { "id": "wrong_size_breaks", "label": "Wrong size ratios — too many of the wrong sizes" },
+                { "id": "sample_delays", "label": "Slow or inconsistent sampling" },
+                { "id": "quality_control", "label": "Quality control issues on bulk" },
+                { "id": "cost_blowouts", "label": "Costs coming in over target" },
+                { "id": "tracking", "label": "Losing track of where styles are in the pipeline" },
+                { "id": "manufacturer_comms", "label": "Communication with manufacturers" },
+                { "id": "returns", "label": "High return rates due to fit issues" }
+              ]
+            },
+            {
+              "id": "brand_markets",
+              "type": "multi_choice",
+              "question": "Which markets do you currently sell in?",
+              "required": true,
+              "multiSelect": true,
+              "options": [
+                { "id": "australia_nz", "label": "Australia / New Zealand" },
+                { "id": "usa_canada", "label": "USA / Canada" },
+                { "id": "uk", "label": "UK" },
+                { "id": "europe", "label": "Europe" },
+                { "id": "middle_east", "label": "Middle East" },
+                { "id": "asia_pacific", "label": "Asia Pacific" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "features",
+          "title": "What You Need Most",
+          "questions": [
+            {
+              "id": "brand_priority",
+              "type": "single_choice",
+              "question": "Which Loocbooc feature would have the biggest impact on your business right now?",
+              "required": true,
+              "options": [
+                { "id": "back_it", "label": "Back It — pre-production demand validation to reduce overstock" },
+                { "id": "plm", "label": "Pipeline tracking — know where every style is at all times" },
+                { "id": "manufacturers", "label": "Manufacturer marketplace — find better factory partners" },
+                { "id": "avatar", "label": "Avatar try-on — reduce returns with virtual fitting" },
+                { "id": "tech_packs", "label": "Universal tech pack tool — streamline how we spec garments" },
+                { "id": "intelligence", "label": "Trend intelligence — data on what's actually selling" }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "id": "designer",
+      "label": "Designer",
+      "tagline": "Tell us about your design practice",
+      "description": "Help us connect you with the tools and partners that fit the way you work.",
+      "estimatedMinutes": 6,
+      "sections": [
+        {
+          "id": "designer_basics",
+          "title": "You as a Designer",
+          "questions": [
+            {
+              "id": "designer_level",
+              "type": "single_choice",
+              "question": "How would you describe your experience level?",
+              "required": true,
+              "options": [
+                { "id": "student", "label": "Student — studying fashion design" },
+                { "id": "emerging", "label": "Emerging — graduated, building my portfolio" },
+                { "id": "mid", "label": "Mid-level — 3 – 7 years experience" },
+                { "id": "senior", "label": "Senior — 7+ years, running my own label or leading a team" },
+                { "id": "freelance", "label": "Freelance designer working across multiple brands" }
+              ]
+            },
+            {
+              "id": "designer_specialisation",
+              "type": "multi_choice",
+              "question": "What do you design?",
+              "required": true,
+              "multiSelect": true,
+              "options": [
+                { "id": "womens_des", "label": "Women's fashion" },
+                { "id": "mens_des", "label": "Men's fashion" },
+                { "id": "unisex_des", "label": "Unisex / genderless" },
+                { "id": "kids_des", "label": "Childrenswear" },
+                { "id": "active_des", "label": "Activewear / Sports" },
+                { "id": "swim_des", "label": "Swimwear" },
+                { "id": "acc_des", "label": "Accessories" },
+                { "id": "bridal_des", "label": "Bridal / Occasionwear" }
+              ]
+            },
+            {
+              "id": "designer_aesthetic",
+              "type": "multi_choice",
+              "question": "How would you describe your design aesthetic?",
+              "required": true,
+              "multiSelect": true,
+              "maxSelections": 3,
+              "instruction": "Pick up to 3.",
+              "options": [
+                { "id": "minimal", "label": "Minimal / Clean" },
+                { "id": "streetwear", "label": "Streetwear / Urban" },
+                { "id": "romantic", "label": "Romantic / Feminine" },
+                { "id": "avant_garde", "label": "Avant-garde / Conceptual" },
+                { "id": "sustainable", "label": "Sustainable / Conscious" },
+                { "id": "workwear_des", "label": "Workwear / Corporate" },
+                { "id": "resort", "label": "Resort / Vacation" },
+                { "id": "heritage", "label": "Heritage / Classic" },
+                { "id": "y2k", "label": "Y2K / Retro" },
+                { "id": "luxury_des", "label": "Luxury / Couture" }
+              ]
+            },
+            {
+              "id": "designer_tools",
+              "type": "multi_choice",
+              "question": "What tools do you currently use to design and spec garments?",
+              "required": true,
+              "multiSelect": true,
+              "options": [
+                { "id": "illustrator_des", "label": "Adobe Illustrator" },
+                { "id": "clo3d", "label": "CLO 3D" },
+                { "id": "browzwear", "label": "Browzwear" },
+                { "id": "sketching", "label": "Sketching by hand" },
+                { "id": "excel_des", "label": "Excel / Google Sheets for specs" },
+                { "id": "plm_des", "label": "PLM software" },
+                { "id": "canva_des", "label": "Canva / Figma" }
+              ]
+            },
+            {
+              "id": "designer_needs",
+              "type": "multi_choice",
+              "question": "What would help you most right now?",
+              "required": true,
+              "multiSelect": true,
+              "options": [
+                { "id": "manufacturer_access", "label": "Finding the right manufacturer" },
+                { "id": "demand_validation", "label": "Validating demand before I produce" },
+                { "id": "tech_pack_tool", "label": "A better tech pack tool" },
+                { "id": "3d_preview", "label": "Seeing my designs in 3D before sampling" },
+                { "id": "cost_modelling", "label": "Understanding cost of production upfront" },
+                { "id": "sales_channel", "label": "A direct-to-consumer sales channel" }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "id": "garment_tech",
+      "label": "Garment Tech",
+      "tagline": "Tell us about your technical work",
+      "description": "Help us build tools that match how you actually work.",
+      "estimatedMinutes": 5,
+      "sections": [
+        {
+          "id": "gt_basics",
+          "title": "Your Role",
+          "questions": [
+            {
+              "id": "gt_experience",
+              "type": "single_choice",
+              "question": "How many years of garment tech experience do you have?",
+              "required": true,
+              "options": [
+                { "id": "under_2", "label": "Under 2 years" },
+                { "id": "2_5", "label": "2 – 5 years" },
+                { "id": "5_10", "label": "5 – 10 years" },
+                { "id": "over_10", "label": "Over 10 years" }
+              ]
+            },
+            {
+              "id": "gt_employment",
+              "type": "single_choice",
+              "question": "How do you work?",
+              "required": true,
+              "options": [
+                { "id": "inhouse", "label": "In-house at a brand" },
+                { "id": "freelance_gt", "label": "Freelance — multiple brand clients" },
+                { "id": "agency", "label": "At a sourcing or production agency" },
+                { "id": "manufacturer_side", "label": "Manufacturer-side (tech pack interpretation)" }
+              ]
+            },
+            {
+              "id": "gt_categories",
+              "type": "multi_choice",
+              "question": "What garment categories do you spec most?",
+              "required": true,
+              "multiSelect": true,
+              "options": [
+                { "id": "wovens_gt", "label": "Wovens" },
+                { "id": "knits_gt", "label": "Knits / Jersey" },
+                { "id": "knitwear_gt", "label": "Knitwear" },
+                { "id": "denim_gt", "label": "Denim" },
+                { "id": "outerwear_gt", "label": "Outerwear" },
+                { "id": "active_gt", "label": "Activewear" },
+                { "id": "swim_gt", "label": "Swimwear" },
+                { "id": "acc_gt", "label": "Accessories" }
+              ]
+            },
+            {
+              "id": "gt_tools",
+              "type": "multi_choice",
+              "question": "What tools do you currently use to create tech packs?",
+              "required": true,
+              "multiSelect": true,
+              "options": [
+                { "id": "illustrator_gt", "label": "Adobe Illustrator" },
+                { "id": "excel_gt", "label": "Excel / Google Sheets" },
+                { "id": "word_gt", "label": "Word / PDF templates" },
+                { "id": "clo_gt", "label": "CLO 3D" },
+                { "id": "plm_gt", "label": "PLM software (Centric, etc.)" },
+                { "id": "custom_gt", "label": "Company's proprietary system" }
+              ]
+            },
+            {
+              "id": "gt_pain_points",
+              "type": "multi_choice",
+              "question": "What wastes the most time in your current workflow?",
+              "required": true,
+              "multiSelect": true,
+              "options": [
+                { "id": "reformatting", "label": "Reformatting specs for different factories" },
+                { "id": "chasing_feedback", "label": "Chasing fit feedback and approvals" },
+                { "id": "tracking_samples", "label": "Tracking where samples are" },
+                { "id": "version_control", "label": "Version control on tech packs" },
+                { "id": "measurement_errors", "label": "Measurement errors between documents" },
+                { "id": "fit_notes", "label": "Communicating fit notes to manufacturers" },
+                { "id": "colour_management", "label": "Managing colour-up specs" }
+              ]
+            },
+            {
+              "id": "gt_tech_pack_elements",
+              "type": "multi_choice",
+              "question": "What elements do you always include in a tech pack?",
+              "required": true,
+              "multiSelect": true,
+              "options": [
+                { "id": "flat_sketch", "label": "Flat technical sketch (front/back)" },
+                { "id": "measurement_chart", "label": "Measurement chart with tolerances" },
+                { "id": "fabric_details", "label": "Fabric / materials specification" },
+                { "id": "construction_notes", "label": "Construction and stitch notes" },
+                { "id": "trim_details", "label": "Trim details (buttons, zips, labels)" },
+                { "id": "colourways", "label": "Colourway specifications" },
+                { "id": "grading_rules", "label": "Grading rules" },
+                { "id": "packaging", "label": "Packaging and labelling requirements" },
+                { "id": "cost_target", "label": "Target cost per unit" }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "id": "stylist",
+      "label": "Stylist",
+      "tagline": "Tell us about your styling practice",
+      "description": "We'll match you with clients and brands that fit your style and expertise.",
+      "estimatedMinutes": 5,
+      "sections": [
+        {
+          "id": "stylist_basics",
+          "title": "Your Practice",
+          "questions": [
+            {
+              "id": "stylist_type",
+              "type": "multi_choice",
+              "question": "What type of styling do you do?",
+              "required": true,
+              "multiSelect": true,
+              "options": [
+                { "id": "personal", "label": "Personal styling (individual clients)" },
+                { "id": "editorial", "label": "Editorial / magazine / campaign" },
+                { "id": "commercial", "label": "Commercial / brand lookbooks" },
+                { "id": "celebrity", "label": "Celebrity / talent" },
+                { "id": "ecommerce_style", "label": "E-commerce / product styling" },
+                { "id": "wardrobe", "label": "Wardrobe consulting" },
+                { "id": "virtual", "label": "Virtual styling (online clients)" }
+              ]
+            },
+            {
+              "id": "stylist_experience",
+              "type": "single_choice",
+              "question": "How long have you been styling professionally?",
+              "required": true,
+              "options": [
+                { "id": "under_1", "label": "Under 1 year" },
+                { "id": "1_3", "label": "1 – 3 years" },
+                { "id": "3_7", "label": "3 – 7 years" },
+                { "id": "over_7", "label": "Over 7 years" }
+              ]
+            },
+            {
+              "id": "stylist_aesthetic",
+              "type": "multi_choice",
+              "question": "What style aesthetics are you strongest in?",
+              "required": true,
+              "multiSelect": true,
+              "maxSelections": 3,
+              "instruction": "Pick up to 3.",
+              "options": [
+                { "id": "minimal_sty", "label": "Minimal / Clean" },
+                { "id": "classic_sty", "label": "Classic / Timeless" },
+                { "id": "streetwear_sty", "label": "Streetwear / Urban" },
+                { "id": "feminine_sty", "label": "Romantic / Feminine" },
+                { "id": "workwear_sty", "label": "Professional / Workwear" },
+                { "id": "boho_sty", "label": "Bohemian / Free-spirit" },
+                { "id": "luxury_sty", "label": "Luxury / High fashion" },
+                { "id": "sustainable_sty", "label": "Sustainable / Conscious fashion" },
+                { "id": "athleisure_sty", "label": "Athleisure / Active" },
+                { "id": "edgy_sty", "label": "Edgy / Alternative" }
+              ]
+            },
+            {
+              "id": "stylist_client_budget",
+              "type": "single_choice",
+              "question": "What is the typical per-outfit budget of your clients?",
+              "required": true,
+              "options": [
+                { "id": "under_200", "label": "Under $200" },
+                { "id": "200_500", "label": "$200 – $500" },
+                { "id": "500_1000", "label": "$500 – $1,000" },
+                { "id": "1000_2500", "label": "$1,000 – $2,500" },
+                { "id": "over_2500", "label": "$2,500+" }
+              ]
+            },
+            {
+              "id": "stylist_availability",
+              "type": "single_choice",
+              "question": "How many new clients could you take on per month?",
+              "required": true,
+              "options": [
+                { "id": "1_2", "label": "1 – 2 clients" },
+                { "id": "3_5", "label": "3 – 5 clients" },
+                { "id": "5_10", "label": "5 – 10 clients" },
+                { "id": "over_10", "label": "10+ clients" }
+              ]
+            },
+            {
+              "id": "stylist_pain_points",
+              "type": "multi_choice",
+              "question": "What are your biggest frustrations as a stylist right now?",
+              "required": true,
+              "multiSelect": true,
+              "options": [
+                { "id": "finding_clients", "label": "Finding new clients" },
+                { "id": "sourcing_garments", "label": "Sourcing the right garments efficiently" },
+                { "id": "checkout_friction", "label": "Clients buying from recommendations (cart friction)" },
+                { "id": "commission", "label": "Getting paid commission reliably" },
+                { "id": "size_fit", "label": "Knowing if something will fit a client before recommending" },
+                { "id": "multiple_sites", "label": "Pulling from multiple retailers is time-consuming" }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "id": "consumer",
+      "label": "Shopper",
+      "tagline": "Tell us about your style",
+      "description": "The more we know, the better we get at finding things you'll actually love.",
+      "estimatedMinutes": 4,
+      "sections": [
+        {
+          "id": "consumer_style",
+          "title": "Your Style",
+          "questions": [
+            {
+              "id": "con_aesthetic",
+              "type": "multi_choice",
+              "question": "Pick the styles that feel most like you.",
+              "required": true,
+              "multiSelect": true,
+              "maxSelections": 3,
+              "instruction": "Pick up to 3.",
+              "options": [
+                { "id": "effortless", "label": "Effortless / Put-together without trying" },
+                { "id": "clean_con", "label": "Clean / Minimal / Quiet luxury" },
+                { "id": "bold", "label": "Bold / Statement pieces" },
+                { "id": "feminine_con", "label": "Feminine / Soft / Romantic" },
+                { "id": "street_con", "label": "Street / Urban / Casual cool" },
+                { "id": "work_con", "label": "Polished / Workwear-ready" },
+                { "id": "resort_con", "label": "Relaxed / Resort / Vacation" },
+                { "id": "sustainable_con", "label": "Sustainable / Considered" }
+              ]
+            },
+            {
+              "id": "con_budget",
+              "type": "single_choice",
+              "question": "What do you typically spend on a key piece (like a dress or blazer)?",
+              "required": true,
+              "options": [
+                { "id": "under_80", "label": "Under $80" },
+                { "id": "80_150", "label": "$80 – $150" },
+                { "id": "150_300", "label": "$150 – $300" },
+                { "id": "300_500", "label": "$300 – $500" },
+                { "id": "over_500", "label": "$500+" }
+              ]
+            },
+            {
+              "id": "con_frustrations",
+              "type": "multi_choice",
+              "question": "What frustrates you most about shopping online?",
+              "required": true,
+              "multiSelect": true,
+              "options": [
+                { "id": "fit", "label": "Never knowing if it'll actually fit" },
+                { "id": "returns_hassle", "label": "The hassle of returning things" },
+                { "id": "quality_unknown", "label": "Not knowing the quality until it arrives" },
+                { "id": "overwhelming", "label": "Too many options, hard to choose" },
+                { "id": "styling_help", "label": "I know what I like but struggle to put it together" },
+                { "id": "sold_out", "label": "Things selling out before I decide" },
+                { "id": "sizing_inconsistent", "label": "Sizing is different at every brand" }
+              ]
+            },
+            {
+              "id": "con_back_it",
+              "type": "single_choice",
+              "question": "If you could back a style you love before it's produced — at a discount — would you?",
+              "required": true,
+              "options": [
+                { "id": "yes_definitely", "label": "Yes — love getting in early and saving money" },
+                { "id": "yes_right_style", "label": "Yes — if the style is right" },
+                { "id": "maybe", "label": "Maybe — depends on the brand and the discount" },
+                { "id": "no_wait", "label": "I prefer to see the finished product first" }
+              ]
+            },
+            {
+              "id": "con_stylist_interest",
+              "type": "single_choice",
+              "question": "Would you use a personal stylist if it was affordable and online?",
+              "required": true,
+              "options": [
+                { "id": "yes_love", "label": "Yes — I'd love that" },
+                { "id": "yes_tried", "label": "Yes — I've wanted this for a while" },
+                { "id": "maybe_con", "label": "Maybe — depends on the cost" },
+                { "id": "no_self", "label": "I prefer to style myself" }
+              ]
+            },
+            {
+              "id": "con_avatar_comfort",
+              "type": "single_choice",
+              "question": "How comfortable are you creating a digital body avatar for virtual try-on?",
+              "required": true,
+              "options": [
+                { "id": "totally", "label": "Completely comfortable — it would save me so much hassle" },
+                { "id": "comfortable", "label": "Comfortable if it's private and secure" },
+                { "id": "hesitant", "label": "A little hesitant but I'd try it" },
+                { "id": "not_comfortable", "label": "Not comfortable with that yet" }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "back_it": {
+    "loading": "Loading campaign…",
+    "badge_live": "Live",
+    "badge_funded": "Funded — In Production",
+    "progress_label": "Campaign progress toward minimum order quantity",
+    "backers_count": "{count} backers so far",
+    "moq_label": "Goal: {moq} backers",
+    "estimated_ship": "Estimated delivery: {date}",
+    "select_size": "Select your size",
+    "size_required": "Please select a size to continue.",
+    "cta_default": "Back This Style",
+    "cta_funded": "Campaign Funded ✓",
+    "cta_loading": "Opening checkout…",
+    "cta_error_retry": "Something went wrong — try again",
+    "campaign_closed": "This campaign has ended.",
+    "social_proof_singular": "1 person has backed this style",
+    "social_proof_plural": "{count} people have backed this style",
+    "ship_date_label": "Estimated delivery",
+    "deposit_note": "You'll be charged {depositPercent}% today. The remainder is charged when the campaign funds.",
+    "full_payment_note": "Full amount charged today. Refunded automatically if the campaign doesn't reach its goal.",
+    "moq_reached_note": "This campaign has reached its goal and is going to production!",
+    "moq_not_reached_note": "{remaining} more backers needed to go to production.",
+    "error_generic": "Unable to load campaign details. Please refresh the page.",
+    "error_checkout": "We couldn't open checkout. Please try again.",
+    "size_chart_link": "Size guide",
+    "back_it_logo_alt": "Loocbooc Back It"
+  }
+}

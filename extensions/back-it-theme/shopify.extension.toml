@@ -1,0 +1,17 @@
+# Back It — Shopify Theme App Extension manifest
+# https://shopify.dev/docs/apps/online-store/theme-app-extensions
+
+api_version = "2024-01"
+
+[[extensions]]
+type = "theme"
+name = "Back It"
+handle = "back-it"
+
+[extensions.development]
+  # Local development preview URL (set via `shopify app dev`)
+  root_dir = "."
+
+[extensions.capabilities]
+  # Required to call the Loocbooc API from the theme block
+  network_access = true

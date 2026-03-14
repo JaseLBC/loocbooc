@@ -1,0 +1,29 @@
+{
+  "name": "@loocbooc/design-system",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Loocbooc design system — tokens, components, animations.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./tokens": "./src/tokens/index.ts",
+    "./components": "./src/components/index.ts",
+    "./animations": "./src/animations/index.ts",
+    "./theme": "./src/theme/index.ts",
+    "./tokens.css": "./src/tokens/tokens.css"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts,.tsx"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "typescript": "^5.3.3"
+  }
+}

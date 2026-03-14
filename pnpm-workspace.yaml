@@ -1,0 +1,7 @@
+# pnpm-workspace.yaml
+# Defines the monorepo workspace packages for pnpm.
+# All apps and packages are included as workspace members.
+
+packages:
+  - "apps/*"
+  - "packages/*"

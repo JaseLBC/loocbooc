@@ -1,0 +1,708 @@
+// Loocbooc — Prisma Schema
+// PostgreSQL via Supabase
+// Prisma v5
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum UserRole {
+  consumer
+  brand
+  stylist
+  manufacturer
+  admin
+}
+
+enum UserStatus {
+  active
+  suspended
+  deleted
+}
+
+enum BrandTier {
+  starter
+  growth
+  enterprise
+}
+
+enum GarmentStatus {
+  draft
+  development
+  sampling
+  production
+  retail
+  discontinued
+}
+
+enum SKUStatus {
+  active
+  discontinued
+  archived
+}
+
+enum CampaignStatus {
+  draft
+  scheduled
+  active
+  moq_reached
+  funded
+  in_production
+  shipped
+  completed
+  cancelled
+  expired
+}
+
+enum BackingStatus {
+  active
+  cancelled
+  refunded
+  fulfilled
+}
+
+enum PaymentStatus {
+  pending
+  processing
+  succeeded
+  failed
+  refunded
+  not_required
+}
+
+enum OrderType {
+  retail
+  back_it
+  styling
+}
+
+enum OrderStatus {
+  pending
+  payment_processing
+  payment_failed
+  confirmed
+  in_production
+  shipped
+  delivered
+  cancelled
+  refunded
+}
+
+enum BriefStatus {
+  open
+  assigned
+  in_progress
+  delivered
+  accepted
+  closed
+}
+
+// ─── PLM Enums ────────────────────────────────
+
+enum PLMStage {
+  DESIGN
+  TECH_PACK_SENT
+  TECH_PACK_APPROVED
+  SAMPLE_ORDERED
+  SAMPLE_IN_PRODUCTION
+  SAMPLE_SHIPPED
+  SAMPLE_RECEIVED
+  FIT_SESSION
+  ADJUSTMENTS_SENT
+  COUNTER_SAMPLE_REQUESTED
+  COUNTER_SAMPLE_SHIPPED
+  COUNTER_SAMPLE_RECEIVED
+  BULK_APPROVED
+  IN_PRODUCTION
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+// ─────────────────────────────────────────────
+// CORE MODELS
+// ─────────────────────────────────────────────
+
+model User {
+  id               String     @id @default(cuid())
+  email            String     @unique
+  emailVerified    Boolean    @default(false)
+  phone            String?
+  fullName         String?
+  displayName      String?
+  avatarUrl        String?
+  role             UserRole   @default(consumer)
+  status           UserStatus @default(active)
+  stripeCustomerId String?
+  metadata         Json       @default("{}")
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  lastLoginAt      DateTime?
+
+  ownedBrands   Brand[]
+  brandMembers  BrandMember[]
+  avatars       Avatar[]
+  orders        Order[]
+  styleBriefs   StyleBrief[]
+
+  @@map("users")
+}
+
+model Brand {
+  id                  String    @id @default(cuid())
+  ownerUserId         String
+  name                String
+  slug                String    @unique
+  description         String?
+  logoUrl             String?
+  websiteUrl          String?
+  country             String?
+  currency            String    @default("AUD")
+  shopifyStoreUrl     String?
+  shopifyAccessToken  String?
+  stripeAccountId     String?
+  verified            Boolean   @default(false)
+  tier                BrandTier @default(starter)
+  settings            Json      @default("{}")
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  owner      User          @relation(fields: [ownerUserId], references: [id])
+  members    BrandMember[]
+  garments   Garment[]
+  campaigns  Campaign[]
+  orders     Order[]
+  plmRecords PLMRecord[]
+  manufacturerRatings    ManufacturerRating[]
+  manufacturerConnections BrandManufacturerConnection[]
+
+  @@map("brands")
+}
+
+model BrandMember {
+  id        String   @id @default(cuid())
+  brandId   String
+  userId    String
+  role      String   @default("member")
+  createdAt DateTime @default(now())
+
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([brandId, userId])
+  @@map("brand_members")
+}
+
+model Garment {
+  id          String        @id @default(cuid())
+  brandId     String
+  name        String
+  styleCode   String?
+  category    String?
+  subcategory String?
+  gender      String?
+  season      String?
+  year        Int?
+  description String?
+  techPackId  String?
+  status      GarmentStatus @default(draft)
+  tags        String[]
+  metadata    Json          @default("{}")
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  brand     Brand      @relation(fields: [brandId], references: [id])
+  skus      SKU[]
+  campaigns Campaign[]
+
+  @@map("garments")
+}
+
+model SKU {
+  id         String    @id @default(cuid())
+  garmentId  String
+  skuCode    String
+  colour     String?
+  colourCode String?
+  size       String?
+  sizeSystem String?
+  barcode    String?
+  targetCost Decimal?  @db.Decimal(10, 2)
+  actualCost Decimal?  @db.Decimal(10, 2)
+  rrp        Decimal?  @db.Decimal(10, 2)
+  weightGrams Int?
+  status     SKUStatus @default(active)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  garment        Garment         @relation(fields: [garmentId], references: [id], onDelete: Cascade)
+  orderItems     OrderItem[]
+  avatarFitResults AvatarFitResult[]
+
+  @@unique([garmentId, colourCode, size])
+  @@map("skus")
+}
+
+model Manufacturer {
+  id                 String   @id @default(cuid())
+  ownerUserId        String
+  name               String
+  slug               String   @unique
+  description        String?
+  logoUrl            String?
+  country            String
+  city               String?
+  specialisations    String[]
+  certifications     String[]
+  minOrderQty        Int?
+  maxCapacityUnits   Int?
+  leadTimeDaysMin    Int?
+  leadTimeDaysMax    Int?
+  priceTier          String?
+  verified           Boolean  @default(false)
+  verifiedAt         DateTime?
+  ratingAvg          Decimal? @db.Decimal(3, 2)
+  ratingCount        Int      @default(0)
+  active             Boolean  @default(true)
+  stripeAccountId    String?
+  metadata           Json     @default("{}")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  campaigns  Campaign[]
+  plmRecords PLMRecord[] @relation("ManufacturerPLMRecords")
+  profile    ManufacturerProfile?
+
+  @@map("manufacturers")
+}
+
+model Avatar {
+  id                String   @id @default(cuid())
+  userId            String
+  nickname          String?
+  height            Decimal? @db.Decimal(5, 1)
+  weightKg          Decimal? @db.Decimal(5, 1)
+  bust              Decimal? @db.Decimal(5, 1)
+  waist             Decimal? @db.Decimal(5, 1)
+  hips              Decimal? @db.Decimal(5, 1)
+  inseam            Decimal? @db.Decimal(5, 1)
+  shoulderWidth     Decimal? @db.Decimal(5, 1)
+  sleeveLength      Decimal? @db.Decimal(5, 1)
+  neck              Decimal? @db.Decimal(5, 1)
+  chest             Decimal? @db.Decimal(5, 1)
+  thigh             Decimal? @db.Decimal(5, 1)
+  rise              Decimal? @db.Decimal(5, 1)
+  bodyShape         String?
+  fitPreference     String?
+  avatar3dUrl       String?
+  avatarImgUrl      String?
+  sizeAu            String?
+  sizeUs            String?
+  sizeEu            String?
+  measurementMethod String?
+  confidenceScore   Decimal? @db.Decimal(3, 2)
+  isPrimary         Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fitResults AvatarFitResult[]
+  styleBriefs StyleBrief[]
+
+  @@map("avatars")
+}
+
+model AvatarFitResult {
+  id               String   @id @default(cuid())
+  avatarId         String
+  skuId            String
+  fitScore         Decimal? @db.Decimal(3, 2)
+  fitNotes         Json?
+  recommendedSize  String?
+  renderUrl        String?
+  createdAt        DateTime @default(now())
+
+  avatar Avatar @relation(fields: [avatarId], references: [id], onDelete: Cascade)
+  sku    SKU    @relation(fields: [skuId], references: [id])
+
+  @@unique([avatarId, skuId])
+  @@map("avatar_fit_results")
+}
+
+// ─────────────────────────────────────────────
+// BACK IT
+// ─────────────────────────────────────────────
+
+model Campaign {
+  id                    String         @id @default(cuid())
+  brandId               String
+  garmentId             String
+  title                 String
+  description           String?
+  slug                  String         @unique
+  status                CampaignStatus @default(draft)
+  retailPriceCents      Int
+  backerPriceCents      Int
+  depositPercent        Int            @default(100)
+  currency              String         @default("AUD")
+  moq                   Int
+  currentBackingCount   Int            @default(0)
+  moqReached            Boolean        @default(false)
+  moqReachedAt          DateTime?
+  stretchGoalQty        Int?
+  campaignStart         DateTime
+  campaignEnd           DateTime
+  estimatedShipDate     DateTime?
+  manufacturerId        String?
+  manufacturerNotifiedAt DateTime?
+  shopifyProductId      String?
+  shopifyStoreUrl       String?
+  coverImageUrl         String?
+  galleryUrls           String[]
+  techPackPreviewUrl    String?
+  availableSizes        String[]
+  sizeLimits            Json?
+  metadata              Json           @default("{}")
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  brand        Brand            @relation(fields: [brandId], references: [id])
+  garment      Garment          @relation(fields: [garmentId], references: [id])
+  manufacturer Manufacturer?    @relation(fields: [manufacturerId], references: [id])
+  backings     Backing[]
+  sizeBreaks   CampaignSizeBreak[]
+  events       CampaignEvent[]
+
+  @@index([brandId])
+  @@index([status])
+  @@index([shopifyProductId])
+  @@map("campaigns")
+}
+
+model Backing {
+  id                      String        @id @default(cuid())
+  campaignId              String
+  userId                  String
+  orderId                 String?
+  size                    String
+  quantity                Int           @default(1)
+  totalCents              Int
+  depositCents            Int
+  remainingCents          Int
+  currency                String        @default("AUD")
+  stripePaymentIntentId   String?       @unique
+  stripeChargeId          String?
+  depositStatus           PaymentStatus @default(pending)
+  finalPaymentStatus      PaymentStatus @default(not_required)
+  shopifyOrderId          String?
+  shopifyLineItemId       String?
+  status                  BackingStatus @default(active)
+  cancelledAt             DateTime?
+  refundedAt              DateTime?
+  refundStripeId          String?
+  shippingAddress         Json
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id])
+  order    Order?   @relation(fields: [orderId], references: [id])
+
+  @@index([campaignId])
+  @@index([userId])
+  @@map("backings")
+}
+
+model CampaignSizeBreak {
+  id           String   @id @default(cuid())
+  campaignId   String
+  size         String
+  backingCount Int      @default(0)
+  capturedAt   DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id])
+
+  @@unique([campaignId, size])
+  @@map("campaign_size_breaks")
+}
+
+model CampaignEvent {
+  id         String   @id @default(cuid())
+  campaignId String
+  eventType  String
+  actorId    String?
+  payload    Json     @default("{}")
+  createdAt  DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id])
+
+  @@map("campaign_events")
+}
+
+// ─────────────────────────────────────────────
+// ORDERS
+// ─────────────────────────────────────────────
+
+model Order {
+  id                      String      @id @default(cuid())
+  userId                  String
+  brandId                 String
+  orderType               OrderType
+  status                  OrderStatus @default(pending)
+  subtotalCents           Int
+  discountCents           Int         @default(0)
+  shippingCents           Int         @default(0)
+  taxCents                Int         @default(0)
+  totalCents              Int
+  currency                String      @default("AUD")
+  stripePaymentIntentId   String?
+  stripeChargeId          String?
+  shopifyOrderId          String?
+  shippingAddress         Json?
+  billingAddress          Json?
+  notes                   String?
+  metadata                Json        @default("{}")
+  createdAt               DateTime    @default(now())
+  updatedAt               DateTime    @updatedAt
+
+  user     User        @relation(fields: [userId], references: [id])
+  brand    Brand       @relation(fields: [brandId], references: [id])
+  items    OrderItem[]
+  backings Backing[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id             String   @id @default(cuid())
+  orderId        String
+  skuId          String
+  quantity       Int      @default(1)
+  unitPriceCents Int
+  totalCents     Int
+  campaignId     String?
+  metadata       Json     @default("{}")
+  createdAt      DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sku   SKU   @relation(fields: [skuId], references: [id])
+
+  @@map("order_items")
+}
+
+// ─────────────────────────────────────────────
+// STYLING
+// ─────────────────────────────────────────────
+
+model StyleBrief {
+  id              String      @id @default(cuid())
+  userId          String
+  title           String?
+  budgetMinCents  Int?
+  budgetMaxCents  Int?
+  currency        String      @default("AUD")
+  occasion        String[]
+  styleNotes      String?
+  brandPreferences String[]
+  excludedBrands  String[]
+  sizeInfo        Json?
+  avatarId        String?
+  status          BriefStatus @default(open)
+  stylistId       String?
+  assignedAt      DateTime?
+  deadline        DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  user   User    @relation(fields: [userId], references: [id])
+  avatar Avatar? @relation(fields: [avatarId], references: [id])
+
+  @@map("style_briefs")
+}
+
+// ─────────────────────────────────────────────
+// PLM — PRODUCTION INTELLIGENCE
+// ─────────────────────────────────────────────
+
+model PLMRecord {
+  id             String    @id @default(cuid())
+  brandId        String
+  skuId          String?   // links to SKU once created
+  styleName      String
+  styleCode      String
+  season         String?
+  stage          PLMStage  @default(DESIGN)
+  targetCost     Decimal?  @db.Decimal(10, 2)
+  currentCost    Decimal?  @db.Decimal(10, 2)
+  costVariance   Decimal?  @db.Decimal(10, 2) // computed: currentCost - targetCost
+  costFlag       Boolean   @default(false)     // true if >15% over target
+  manufacturerId String?
+  assignedTo     String?   // userId
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  brand        Brand            @relation(fields: [brandId], references: [id])
+  manufacturer Manufacturer?    @relation("ManufacturerPLMRecords", fields: [manufacturerId], references: [id])
+  milestones   PLMMilestone[]
+  costEntries  PLMCostEntry[]
+  sampleRounds PLMSampleRound[]
+
+  @@index([brandId])
+  @@index([stage])
+  @@index([costFlag])
+  @@map("plm_records")
+}
+
+model PLMMilestone {
+  id          String    @id @default(cuid())
+  plmRecordId String
+  stage       PLMStage
+  completedAt DateTime?
+  completedBy String?   // userId
+  notes       String?
+  createdAt   DateTime  @default(now())
+
+  plmRecord PLMRecord @relation(fields: [plmRecordId], references: [id])
+
+  @@index([plmRecordId])
+  @@map("plm_milestones")
+}
+
+model PLMCostEntry {
+  id          String   @id @default(cuid())
+  plmRecordId String
+  entryType   String   // 'fabric', 'trim', 'labour', 'shipping', 'duty', 'total'
+  colourway   String?  // for colour-up pricing
+  amount      Decimal  @db.Decimal(10, 2)
+  currency    String   @default("AUD")
+  notes       String?
+  recordedAt  DateTime @default(now())
+  recordedBy  String?
+
+  plmRecord PLMRecord @relation(fields: [plmRecordId], references: [id])
+
+  @@index([plmRecordId])
+  @@map("plm_cost_entries")
+}
+
+model PLMSampleRound {
+  id             String    @id @default(cuid())
+  plmRecordId    String
+  roundNumber    Int
+  shippedAt      DateTime?
+  trackingNumber String?
+  carrier        String?
+  receivedAt     DateTime?
+  fitNotes       String?
+  fitApproved    Boolean?
+  adjustments    String?
+  createdAt      DateTime  @default(now())
+
+  plmRecord PLMRecord @relation(fields: [plmRecordId], references: [id])
+
+  @@index([plmRecordId])
+  @@map("plm_sample_rounds")
+}
+
+// ─────────────────────────────────────────────
+// MANUFACTURER MARKETPLACE
+// ─────────────────────────────────────────────
+
+enum ConnectionStatus {
+  ENQUIRY    // brand has sent an enquiry
+  RESPONDED  // manufacturer has responded
+  CONNECTED  // both parties have confirmed connection
+  DECLINED   // manufacturer declined
+  INACTIVE   // connection went cold
+}
+
+model ManufacturerProfile {
+  id                 String    @id @default(cuid())
+  manufacturerId     String    @unique
+  displayName        String
+  description        String?
+  heroImageUrl       String?
+  galleryImageUrls   String[]
+  videoUrl           String?
+  country            String
+  city               String?
+  yearEstablished    Int?
+  employeeCount      String?   // "50-100", "100-500" etc
+  monthlyCapacityMin Int?
+  monthlyCapacityMax Int?
+  moqMin             Int
+  moqMax             Int?
+  sampleLeadTimeDays Int
+  bulkLeadTimeDays   Int
+  specialisations    String[]  // garment categories
+  materials          String[]
+  certifications     String[]
+  exportMarkets      String[]
+  priceTier          String    // mass | mid | premium | luxury
+  techPackFormats    String[]  // pdf | excel | clo3d | loocbooc_native
+  languages          String[]
+  isVerified         Boolean   @default(false)
+  verifiedAt         DateTime?
+  isFeatured         Boolean   @default(false)
+  responseTimeHours  Float?    // average response time to enquiries
+
+  manufacturer Manufacturer                @relation(fields: [manufacturerId], references: [id])
+  ratings      ManufacturerRating[]
+  connections  BrandManufacturerConnection[]
+
+  @@index([country])
+  @@index([priceTier])
+  @@index([isVerified])
+  @@index([isFeatured])
+  @@map("manufacturer_profiles")
+}
+
+model ManufacturerRating {
+  id                    String   @id @default(cuid())
+  manufacturerProfileId String
+  brandId               String
+  overallScore          Int      // 1-5
+  qualityScore          Int      // 1-5
+  communicationScore    Int      // 1-5
+  timelinessScore       Int      // 1-5
+  review                String?
+  ordersCompleted       Int      @default(1)
+  isVerifiedPurchase    Boolean  @default(true)
+  createdAt             DateTime @default(now())
+
+  manufacturerProfile ManufacturerProfile @relation(fields: [manufacturerProfileId], references: [id])
+  brand               Brand               @relation(fields: [brandId], references: [id])
+
+  @@unique([manufacturerProfileId, brandId])
+  @@index([manufacturerProfileId])
+  @@map("manufacturer_ratings")
+}
+
+model BrandManufacturerConnection {
+  id                    String           @id @default(cuid())
+  brandId               String
+  manufacturerProfileId String
+  status                ConnectionStatus @default(ENQUIRY)
+  enquiryMessage        String?
+  respondedAt           DateTime?
+  connectedAt           DateTime?
+  createdAt             DateTime         @default(now())
+
+  brand               Brand               @relation(fields: [brandId], references: [id])
+  manufacturerProfile ManufacturerProfile @relation(fields: [manufacturerProfileId], references: [id])
+
+  @@unique([brandId, manufacturerProfileId])
+  @@index([brandId])
+  @@index([manufacturerProfileId])
+  @@map("brand_manufacturer_connections")
+}

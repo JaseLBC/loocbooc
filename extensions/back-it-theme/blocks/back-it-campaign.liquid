@@ -1,0 +1,129 @@
+{% comment %}
+  Back It — Campaign Widget Block
+  ================================
+  Renders the "Back This Style" campaign widget on a Shopify product page.
+
+  This block reads the campaign ID from its settings (set by the merchant
+  in the Theme Editor) and then hands off to back-it.js which fetches
+  live campaign data from the Loocbooc API and subscribes to Supabase
+  Realtime for MOQ progress updates.
+
+  Schema settings (editable in Theme Editor):
+    - campaign_id   : Loocbooc campaign UUID
+    - show_gallery  : Toggle hero gallery
+    - cta_label     : Override CTA button label
+    - checkout_mode : 'shopify' (default) | 'loocbooc'
+{% endcomment %}
+
+{%- if block.settings.campaign_id != blank -%}
+
+<div
+  class="back-it-widget"
+  id="back-it-widget-{{ block.id }}"
+  data-campaign-id="{{ block.settings.campaign_id | escape }}"
+  data-api-url="{{ block.settings.api_url | default: 'https://api.loocbooc.com' | escape }}"
+  data-supabase-url="{{ block.settings.supabase_url | escape }}"
+  data-supabase-anon-key="{{ block.settings.supabase_anon_key | escape }}"
+  data-checkout-mode="{{ block.settings.checkout_mode | default: 'shopify' | escape }}"
+  data-cta-label="{{ block.settings.cta_label | default: section.settings.back_it_cta_default | escape }}"
+  {{ block.shopify_attributes }}
+>
+  {%- comment -%}
+    Initial server-rendered skeleton — JS replaces this once live data loads.
+    The skeleton prevents layout shift (CLS) while the API call is in flight.
+  {%- endcomment -%}
+
+  <div class="back-it-skeleton" aria-hidden="true">
+    <div class="back-it-skeleton__hero"></div>
+    <div class="back-it-skeleton__bar"></div>
+    <div class="back-it-skeleton__sizes"></div>
+    <div class="back-it-skeleton__cta"></div>
+  </div>
+
+  {%- comment -%}
+    Accessible loading state for screen readers.
+  {%- endcomment -%}
+  <p class="back-it-sr-only" role="status">
+    {{ 'back_it.loading' | t }}
+  </p>
+</div>
+
+{%- comment -%} Inline styles scoped to this block instance (avoids global pollution) {%- endcomment -%}
+<link
+  rel="stylesheet"
+  href="{{ 'back-it.css' | asset_url }}"
+  media="all"
+>
+
+{%- comment -%} Deferred widget script — initialised after DOM ready {%- endcomment -%}
+<script
+  src="{{ 'back-it.js' | asset_url }}"
+  defer
+  type="module"
+></script>
+
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Back It Campaign",
+  "target": "section",
+  "stylesheet": "back-it.css",
+  "javascript": "back-it.js",
+  "settings": [
+    {
+      "type": "text",
+      "id": "campaign_id",
+      "label": "Campaign ID",
+      "info": "Copy the campaign UUID from your Loocbooc dashboard."
+    },
+    {
+      "type": "text",
+      "id": "api_url",
+      "label": "API URL",
+      "default": "https://api.loocbooc.com",
+      "info": "Leave as default unless instructed by Loocbooc support."
+    },
+    {
+      "type": "text",
+      "id": "supabase_url",
+      "label": "Supabase URL",
+      "info": "Your Loocbooc Supabase project URL (for real-time updates)."
+    },
+    {
+      "type": "text",
+      "id": "supabase_anon_key",
+      "label": "Supabase Anon Key",
+      "info": "Public anon key — safe to include in storefront."
+    },
+    {
+      "type": "select",
+      "id": "checkout_mode",
+      "label": "Checkout mode",
+      "options": [
+        { "value": "shopify", "label": "Shopify checkout" },
+        { "value": "loocbooc", "label": "Loocbooc checkout" }
+      ],
+      "default": "shopify",
+      "info": "How customers complete their backing. Shopify checkout is recommended."
+    },
+    {
+      "type": "text",
+      "id": "cta_label",
+      "label": "CTA button label",
+      "placeholder": "Back This Style"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_gallery",
+      "label": "Show campaign gallery",
+      "default": true
+    }
+  ],
+  "presets": [
+    {
+      "name": "Back It Campaign"
+    }
+  ]
+}
+{% endschema %}
