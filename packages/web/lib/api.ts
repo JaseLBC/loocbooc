@@ -1,4 +1,4 @@
-import { getStoredAuth } from '@/auth'
+import { getStoredAuth } from '@/lib/auth'
 import type {
   Garment,
   GarmentListResponse,
@@ -8,7 +8,7 @@ import type {
   FabricPhysics,
   BrandStats,
 } from '@/types'
-import { generateMockUGI } from '@/utils'
+import { generateMockUGI } from '@/lib/utils'
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
 

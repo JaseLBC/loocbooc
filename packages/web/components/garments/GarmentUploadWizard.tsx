@@ -27,7 +27,7 @@ import { PhotoDropzone } from '@/components/upload/PhotoDropzone'
 import { FabricCompositionInput } from './FabricCompositionInput'
 import { useGarmentUpload } from '@/hooks/useGarmentUpload'
 import { cn, CATEGORY_LABELS, formatBytes } from '@/lib/utils'
-import type { GarmentCategory, GarmentSeason, UploadMethod } from '@/types'
+import type { GarmentCategory, GarmentSeason, UploadMethod, GarmentMeasurements, FabricPhysics } from '@/types'
 
 // ---- Category Selector ----
 
@@ -572,8 +572,8 @@ function Step3C({ photos, onAdd, onRemove, onReorder, onNext, onBack }: Step3CPr
 // ---- Step 3D: Measurements ----
 
 interface Step3DProps {
-  measurements: ReturnType<typeof useGarmentUpload>['state']['measurements']
-  onChange: (m: typeof measurements) => void
+  measurements: GarmentMeasurements
+  onChange: (m: GarmentMeasurements) => void
   onNext: () => void
   onBack: () => void
 }
@@ -656,9 +656,9 @@ function Step3D({ measurements, onChange, onNext, onBack }: Step3DProps) {
 
 interface Step4Props {
   composition: string
-  physics: ReturnType<typeof useGarmentUpload>['state']['fabricPhysics']
+  physics: FabricPhysics | null
   onChange: (v: string) => void
-  onPhysics: (p: typeof physics) => void
+  onPhysics: (p: FabricPhysics | null) => void
   onNext: () => void
   onBack: () => void
 }
