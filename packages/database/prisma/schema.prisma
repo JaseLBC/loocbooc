@@ -149,11 +149,13 @@ model User {
   updatedAt        DateTime   @updatedAt
   lastLoginAt      DateTime?
 
-  ownedBrands   Brand[]
-  brandMembers  BrandMember[]
-  avatars       Avatar[]
-  orders        Order[]
-  styleBriefs   StyleBrief[]
+  ownedBrands    Brand[]
+  brandMembers   BrandMember[]
+  avatars        Avatar[]
+  orders         Order[]
+  styleBriefs    StyleBrief[]
+  stylistProfile Stylist?
+  stylistRatings StylistRating[]
 
   @@map("users")
 }
@@ -246,9 +248,10 @@ model SKU {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
-  garment        Garment         @relation(fields: [garmentId], references: [id], onDelete: Cascade)
-  orderItems     OrderItem[]
+  garment          Garment         @relation(fields: [garmentId], references: [id], onDelete: Cascade)
+  orderItems       OrderItem[]
   avatarFitResults AvatarFitResult[]
+  lookbookItems    LookbookItem[]
 
   @@unique([garmentId, colourCode, size])
   @@map("skus")
@@ -383,6 +386,7 @@ model Campaign {
   backings     Backing[]
   sizeBreaks   CampaignSizeBreak[]
   events       CampaignEvent[]
+  lookbookItems LookbookItem[]
 
   @@index([brandId])
   @@index([status])
@@ -504,6 +508,60 @@ model OrderItem {
 // STYLING
 // ─────────────────────────────────────────────
 
+// ─────────────────────────────────────────────
+// Stylist profile
+// ─────────────────────────────────────────────
+
+model Stylist {
+  id               String        @id @default(cuid())
+  userId           String        @unique
+  displayName      String
+  slug             String        @unique
+  bio              String?
+  avatarUrl        String?
+  location         String?       // e.g. "Sydney, AU"
+  specialisations  String[]      // casual, workwear, occasion, editorial, etc.
+  styleKeywords    String[]
+  pricePerBriefCents Int         @default(0) // 0 = free platform (commission only)
+  commissionPercent  Int         @default(15) // % of items purchased via lookbook
+  verified         Boolean       @default(false)
+  verifiedAt       DateTime?
+  stripeAccountId  String?       // Stripe Connect for payouts
+  isAvailable      Boolean       @default(true)
+  instagramHandle  String?
+  websiteUrl       String?
+  completedBriefs  Int           @default(0)
+  avgRating        Decimal?      @db.Decimal(3, 2)
+  ratingCount      Int           @default(0)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  user          User                @relation(fields: [userId], references: [id])
+  portfolioItems StylistPortfolioItem[]
+  briefs        StyleBrief[]
+  lookbooks     StyleBriefLookbook[]
+  ratings       StylistRating[]
+
+  @@index([verified, isAvailable])
+  @@index([slug])
+  @@map("stylists")
+}
+
+model StylistPortfolioItem {
+  id          String   @id @default(cuid())
+  stylistId   String
+  imageUrl    String
+  caption     String?
+  occasion    String?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  stylist Stylist @relation(fields: [stylistId], references: [id], onDelete: Cascade)
+
+  @@index([stylistId])
+  @@map("stylist_portfolio_items")
+}
+
 model StyleBrief {
   id              String      @id @default(cuid())
   userId          String
@@ -524,10 +582,87 @@ model StyleBrief {
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 
-  user   User    @relation(fields: [userId], references: [id])
-  avatar Avatar? @relation(fields: [avatarId], references: [id])
+  user     User                 @relation(fields: [userId], references: [id])
+  avatar   Avatar?              @relation(fields: [avatarId], references: [id])
+  stylist  Stylist?             @relation(fields: [stylistId], references: [id])
+  lookbook StyleBriefLookbook?
 
+  @@index([userId])
+  @@index([stylistId])
+  @@index([status])
   @@map("style_briefs")
+}
+
+model StyleBriefLookbook {
+  id          String   @id @default(cuid())
+  briefId     String   @unique
+  stylistId   String
+  title       String?
+  notes       String?  // stylist's notes to the client
+  status      LookbookStatus @default(draft)
+  publishedAt DateTime?
+  acceptedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  brief   StyleBrief     @relation(fields: [briefId], references: [id])
+  stylist Stylist         @relation(fields: [stylistId], references: [id])
+  items   LookbookItem[]
+
+  @@index([stylistId])
+  @@map("style_brief_lookbooks")
+}
+
+model LookbookItem {
+  id               String   @id @default(cuid())
+  lookbookId       String
+  // Product reference — can be a Loocbooc campaign or an external product
+  campaignId       String?
+  skuId            String?
+  externalUrl      String?
+  productName      String
+  brandName        String
+  priceCents       Int?
+  currency         String   @default("AUD")
+  imageUrl         String?
+  stylistNote      String?  // why this was chosen for the client
+  sortOrder        Int      @default(0)
+  // Purchase tracking (for commission)
+  purchasedAt      DateTime?
+  purchaseOrderId  String?  // links to Order.id if purchased in-platform
+  commissionPaidAt DateTime?
+  createdAt        DateTime @default(now())
+
+  lookbook   StyleBriefLookbook @relation(fields: [lookbookId], references: [id], onDelete: Cascade)
+  campaign   Campaign?          @relation(fields: [campaignId], references: [id])
+  sku        SKU?               @relation(fields: [skuId], references: [id])
+
+  @@index([lookbookId])
+  @@map("lookbook_items")
+}
+
+model StylistRating {
+  id         String   @id @default(cuid())
+  stylistId  String
+  userId     String   // consumer who rated
+  briefId    String?
+  rating     Int      // 1-5
+  review     String?
+  createdAt  DateTime @default(now())
+
+  stylist Stylist @relation(fields: [stylistId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@unique([stylistId, userId])
+  @@index([stylistId])
+  @@map("stylist_ratings")
+}
+
+enum LookbookStatus {
+  draft
+  published
+  accepted
+  closed
 }
 
 // ─────────────────────────────────────────────
