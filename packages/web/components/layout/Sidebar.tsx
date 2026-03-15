@@ -10,6 +10,8 @@ import {
   LogOut,
   Plus,
   Sparkles,
+  Factory,
+  Plug,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { clearStoredAuth, getStoredAuth } from '@/lib/auth'
@@ -18,6 +20,8 @@ import { useRouter } from 'next/navigation'
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', exact: true },
   { href: '/dashboard/garments', icon: Shirt, label: 'Garments' },
+  { href: '/dashboard/manufacturers', icon: Factory, label: 'Manufacturers' },
+  { href: '/dashboard/manufacturers/connections', icon: Plug, label: 'Connections' },
   { href: '/dashboard/settings', icon: Settings, label: 'Settings' },
 ]
 

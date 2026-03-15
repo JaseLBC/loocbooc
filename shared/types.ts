@@ -45,15 +45,18 @@ export type CurrencyCode = string;
 // ============================================================
 
 export enum GarmentCategory {
-  Top = 'top',
-  Bottom = 'bottom',
-  Dress = 'dress',
+  Tops = 'tops',
+  Bottoms = 'bottoms',
+  Dresses = 'dresses',
   Outerwear = 'outerwear',
+  Suits = 'suits',
   Footwear = 'footwear',
-  Accessory = 'accessory',
+  Accessories = 'accessories',
   Underwear = 'underwear',
   Swimwear = 'swimwear',
   Activewear = 'activewear',
+  Bags = 'bags',
+  Hats = 'hats',
   Other = 'other',
 }
 
@@ -68,10 +71,10 @@ export enum GarmentStatus {
   Draft = 'draft',
   Processing = 'processing',
   Active = 'active',
-  Updating = 'updating',
-  Error = 'error',
+  Updating = 'updating',    // Active garment being re-processed
+  Error = 'error',          // Pipeline failed — intervention needed
   Archived = 'archived',
-  Deleted = 'deleted',
+  Deleted = 'deleted',      // Soft-deleted
 }
 
 export enum InputType {

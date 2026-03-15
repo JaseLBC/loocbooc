@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 from app.config import settings
 from app.database import engine
 from app.redis import close_redis, get_redis
-from app.routers import avatars, brands, garments, health, scan, try_on
+from app.routers import avatars, brands, garments, health, manufacturers, scan, try_on
 
 # --- Structured Logging Setup ---
 structlog.configure(
@@ -89,9 +89,21 @@ Example: `LB-CHAR-TO-K9F3M2A1-X7Q`
 )
 
 # --- CORS ---
+# NOTE: allow_origins=["*"] is incompatible with allow_credentials=True (per CORS spec).
+# Browsers will reject credentialed cross-origin requests if the server returns a wildcard.
+# In development we allow localhost origins explicitly; in production, use exact domains.
+_ALLOWED_ORIGINS = (
+    [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3000",
+    ]
+    if settings.DEBUG
+    else ["https://loocbooc.com", "https://app.loocbooc.com"]
+)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"] if settings.DEBUG else ["https://loocbooc.com", "https://app.loocbooc.com"],
+    allow_origins=_ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -148,6 +160,7 @@ app.include_router(garments.router, prefix=API_PREFIX)
 app.include_router(avatars.router, prefix=API_PREFIX)
 app.include_router(scan.router, prefix=API_PREFIX)
 app.include_router(try_on.router, prefix=API_PREFIX)
+app.include_router(manufacturers.router, prefix=API_PREFIX)
 
 
 @app.get("/", tags=["root"])

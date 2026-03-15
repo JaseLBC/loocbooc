@@ -22,7 +22,7 @@ class TestBase36Conversion:
         assert _to_base36(0) == "00000000"
 
     def test_to_base36_known_values(self):
-        assert _to_base36(35) == "000000Z"  # 35 in base 36 = 'Z', padded to 8
+        assert _to_base36(35) == "0000000Z"  # 35 in base 36 = 'Z', padded to 8 chars
         assert _to_base36(36) == "00000010"  # 36 = 1*36 + 0
 
     def test_to_base36_roundtrip(self):

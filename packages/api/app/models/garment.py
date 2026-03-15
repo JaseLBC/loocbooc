@@ -17,7 +17,10 @@ class GarmentStatus(str, enum.Enum):
     DRAFT = "draft"
     PROCESSING = "processing"
     ACTIVE = "active"
+    UPDATING = "updating"   # Active garment being re-processed
+    ERROR = "error"         # Pipeline failed — human intervention needed
     ARCHIVED = "archived"
+    DELETED = "deleted"     # Soft-deleted, excluded from all queries by default
 
 
 class GarmentCategory(str, enum.Enum):
@@ -25,6 +28,7 @@ class GarmentCategory(str, enum.Enum):
     BOTTOMS = "bottoms"
     DRESSES = "dresses"
     OUTERWEAR = "outerwear"
+    SUITS = "suits"         # Added to match shared/types.ts and web types
     UNDERWEAR = "underwear"
     SWIMWEAR = "swimwear"
     ACTIVEWEAR = "activewear"
@@ -41,6 +45,7 @@ CATEGORY_CODES: dict[str, str] = {
     GarmentCategory.BOTTOMS: "BT",
     GarmentCategory.DRESSES: "DR",
     GarmentCategory.OUTERWEAR: "OW",
+    GarmentCategory.SUITS: "SU",
     GarmentCategory.UNDERWEAR: "UW",
     GarmentCategory.SWIMWEAR: "SW",
     GarmentCategory.ACTIVEWEAR: "AW",

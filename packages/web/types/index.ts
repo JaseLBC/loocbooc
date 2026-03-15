@@ -3,19 +3,30 @@
 // Aligned with backend schema in packages/api and packages/types
 // ============================================================
 
-export type GarmentStatus = 'draft' | 'processing' | 'active' | 'error'
+// GarmentStatus mirrors app/models/garment.py GarmentStatus enum
+export type GarmentStatus =
+  | 'draft'
+  | 'processing'
+  | 'active'
+  | 'updating'
+  | 'error'
+  | 'archived'
+  | 'deleted'
 
+// GarmentCategory mirrors app/models/garment.py GarmentCategory enum (plural values)
 export type GarmentCategory =
-  | 'top'
-  | 'bottom'
-  | 'dress'
+  | 'tops'
+  | 'bottoms'
+  | 'dresses'
   | 'outerwear'
-  | 'suit'
+  | 'suits'
   | 'activewear'
   | 'swimwear'
   | 'underwear'
-  | 'accessory'
+  | 'accessories'
   | 'footwear'
+  | 'bags'
+  | 'hats'
   | 'other'
 
 export type GarmentSeason = 'SS' | 'AW' | 'all-season' | 'resort'
@@ -73,10 +84,11 @@ export interface Garment {
 }
 
 export interface GarmentListResponse {
-  garments: Garment[]
+  items: Garment[]        // API returns 'items', not 'garments'
   total: number
   page: number
-  limit: number
+  page_size: number       // API returns 'page_size', not 'limit'
+  has_next: boolean
 }
 
 export interface GarmentFilters {

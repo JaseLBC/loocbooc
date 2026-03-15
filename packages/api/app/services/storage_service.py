@@ -40,6 +40,8 @@ async def upload_file(
         return await _upload_s3(content, storage_key, mime_type)
     elif settings.STORAGE_BACKEND == "gcs":
         return await _upload_gcs(content, storage_key, mime_type)
+    elif settings.STORAGE_BACKEND == "minio":
+        return await _upload_minio(content, storage_key, mime_type)
     else:
         raise ValueError(f"Unknown storage backend: {settings.STORAGE_BACKEND}")
 
@@ -55,6 +57,38 @@ async def _upload_local(content: bytes, storage_key: str) -> tuple[str, None]:
 
     logger.debug(f"Stored file locally: {file_path}")
     return storage_key, None
+
+
+async def _upload_minio(content: bytes, storage_key: str, mime_type: str) -> tuple[str, str]:
+    """Upload to MinIO (S3-compatible local storage for dev/MVP)."""
+    try:
+        import boto3
+        from botocore.client import Config
+
+        s3 = boto3.client(
+            "s3",
+            endpoint_url=settings.MINIO_ENDPOINT,
+            aws_access_key_id=settings.MINIO_ACCESS_KEY,
+            aws_secret_access_key=settings.MINIO_SECRET_KEY,
+            config=Config(signature_version="s3v4"),
+            region_name="us-east-1",  # MinIO requires a region even if not used
+        )
+
+        s3.put_object(
+            Bucket=settings.MINIO_BUCKET,
+            Key=storage_key,
+            Body=content,
+            ContentType=mime_type,
+        )
+
+        # Return a publicly accessible URL (MinIO bucket set to public via minio-init)
+        url = f"{settings.MINIO_ENDPOINT}/{settings.MINIO_BUCKET}/{storage_key}"
+        logger.info(f"Uploaded to MinIO: {storage_key}")
+        return storage_key, url
+
+    except Exception as e:
+        logger.error(f"MinIO upload failed: {e}")
+        raise
 
 
 async def _upload_s3(content: bytes, storage_key: str, mime_type: str) -> tuple[str, str]:
@@ -112,11 +146,24 @@ async def get_file(storage_key: str) -> bytes | None:
         if not file_path.exists():
             return None
         return file_path.read_bytes()
-    elif settings.STORAGE_BACKEND == "s3":
+    elif settings.STORAGE_BACKEND in ("s3", "minio"):
         import boto3
-        s3 = boto3.client("s3")
+        from botocore.client import Config
+        if settings.STORAGE_BACKEND == "minio":
+            s3 = boto3.client(
+                "s3",
+                endpoint_url=settings.MINIO_ENDPOINT,
+                aws_access_key_id=settings.MINIO_ACCESS_KEY,
+                aws_secret_access_key=settings.MINIO_SECRET_KEY,
+                config=Config(signature_version="s3v4"),
+                region_name="us-east-1",
+            )
+            bucket = settings.MINIO_BUCKET
+        else:
+            s3 = boto3.client("s3")
+            bucket = settings.STORAGE_BUCKET
         try:
-            response = s3.get_object(Bucket=settings.STORAGE_BUCKET, Key=storage_key)
+            response = s3.get_object(Bucket=bucket, Key=storage_key)
             return response["Body"].read()
         except Exception:
             return None

@@ -1,49 +1,31 @@
 FROM python:3.11-slim
 
-# System dependencies for CV and 3D processing
+# Minimal system dependencies for pipeline worker (MVP/mock mode — no COLMAP required)
 RUN apt-get update && apt-get install -y \
-    # Build tools
-    gcc g++ cmake make \
-    # Image processing
-    libglib2.0-0 libsm6 libxext6 libxrender-dev libgl1-mesa-glx \
-    # COLMAP dependencies (runtime)
-    libboost-program-options1.74.0 \
-    libboost-filesystem1.74.0 \
-    libboost-graph1.74.0 \
-    libcgal-dev \
-    libflann-dev \
-    libfreeimage-dev \
-    libsqlite3-dev \
-    # Open3D dependencies
+    gcc \
+    g++ \
+    libglib2.0-0 \
     libgomp1 \
-    # Video processing
-    ffmpeg \
-    # Blender for simulation/export (optional)
-    # blender \
+    curl \
     && rm -rf /var/lib/apt/lists/*
-
-# Install COLMAP
-# In production, build from source for GPU support
-# RUN apt-get install -y colmap
-# OR build from source with GPU:
-# See: https://colmap.github.io/install.html
 
 WORKDIR /app
 
-# Install Python dependencies
-COPY pyproject.toml ./
-RUN pip install poetry && \
-    poetry config virtualenvs.create false && \
-    poetry install --no-dev --no-interaction
+# Install Python dependencies from requirements file (fast, no poetry overhead)
+COPY requirements-docker.txt ./
+RUN pip install --no-cache-dir -r requirements-docker.txt
 
+# Copy pipeline source
 COPY pipeline/ ./pipeline/
 
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app
 ENV REDIS_URL=redis://redis:6379/0
 
+# Start Celery worker + Redis list poller (see celery_worker.py)
 CMD ["celery", "-A", "pipeline.workers.celery_worker", "worker", \
      "-Q", "pipeline", \
-     "-c", "2", \
+     "-c", "1", \
      "--loglevel=info", \
-     "--without-heartbeat"]
+     "--without-heartbeat", \
+     "--without-mingle"]

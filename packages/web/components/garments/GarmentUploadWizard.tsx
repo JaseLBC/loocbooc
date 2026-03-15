@@ -32,15 +32,15 @@ import type { GarmentCategory, GarmentSeason, UploadMethod, GarmentMeasurements,
 // ---- Category Selector ----
 
 const CATEGORIES: { key: GarmentCategory; emoji: string }[] = [
-  { key: 'top', emoji: '👕' },
-  { key: 'bottom', emoji: '👖' },
-  { key: 'dress', emoji: '👗' },
+  { key: 'tops', emoji: '👕' },
+  { key: 'bottoms', emoji: '👖' },
+  { key: 'dresses', emoji: '👗' },
   { key: 'outerwear', emoji: '🧥' },
-  { key: 'suit', emoji: '🤵' },
+  { key: 'suits', emoji: '🤵' },
   { key: 'activewear', emoji: '🏃' },
   { key: 'swimwear', emoji: '👙' },
   { key: 'underwear', emoji: '🩲' },
-  { key: 'accessory', emoji: '👜' },
+  { key: 'accessories', emoji: '👜' },
   { key: 'footwear', emoji: '👟' },
   { key: 'other', emoji: '✨' },
 ]

@@ -8,6 +8,16 @@ import type {
   FabricPhysics,
   BrandStats,
 } from '@/types'
+import type {
+  ManufacturerListItem,
+  ManufacturerProfile,
+  ManufacturerListResponse,
+  ManufacturerFilters,
+  BrandConnection,
+  SendEnquiryInput,
+  RateManufacturerInput,
+  CreateProfileInput,
+} from '@/types/manufacturer'
 import { generateMockUGI } from '@/lib/utils'
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
@@ -25,8 +35,7 @@ async function request<T>(
   }
 
   if (auth?.apiKey) {
-    headers['Authorization'] = `Bearer ${auth.apiKey}`
-    headers['X-Brand-ID'] = auth.brandId
+    headers['X-API-Key'] = auth.apiKey
   }
 
   const res = await fetch(`${BASE_URL}${path}`, {
@@ -45,7 +54,7 @@ async function request<T>(
 // ---- Mock Data ----
 
 function generateMockGarments(count = 12): Garment[] {
-  const categories = ['top', 'bottom', 'dress', 'outerwear', 'activewear'] as const
+  const categories = ['tops', 'bottoms', 'dresses', 'outerwear', 'activewear'] as const
   const statuses = ['active', 'active', 'active', 'processing', 'draft'] as const
   const names = [
     'Oversized Linen Blazer', 'Ribbed Knit Dress', 'Wide Leg Trousers',
@@ -92,7 +101,7 @@ export const api = {
             if (value !== undefined) params.set(key, String(value))
           })
         }
-        return await request<GarmentListResponse>(`/garments?${params}`)
+        return await request<GarmentListResponse>(`/api/v1/garments?${params}`)
       } catch {
         // Mock fallback
         await new Promise(r => setTimeout(r, 400))
@@ -114,17 +123,18 @@ export const api = {
         }
 
         return {
-          garments,
+          items: garments,
           total: garments.length,
           page: filters?.page ?? 1,
-          limit: filters?.limit ?? 20,
+          page_size: filters?.limit ?? 20,
+          has_next: false,
         }
       }
     },
 
     get: async (ugi: string): Promise<Garment> => {
       try {
-        return await request<Garment>(`/garments/${ugi}`)
+        return await request<Garment>(`/api/v1/garments/${ugi}`)
       } catch {
         await new Promise(r => setTimeout(r, 300))
         const found = MOCK_GARMENTS.find(g => g.ugi === ugi)
@@ -145,7 +155,7 @@ export const api = {
 
     create: async (data: CreateGarmentInput): Promise<Garment> => {
       try {
-        return await request<Garment>('/garments', {
+        return await request<Garment>('/api/v1/garments', {
           method: 'POST',
           body: JSON.stringify(data),
         })
@@ -167,17 +177,26 @@ export const api = {
     },
 
     uploadFiles: async (ugi: string, files: File[]): Promise<void> => {
+      // API accepts one file per request — upload sequentially
+      const auth = getStoredAuth()
+      const headers: Record<string, string> = auth?.apiKey
+        ? { 'X-API-Key': auth.apiKey }
+        : {}
+
       try {
-        const formData = new FormData()
-        files.forEach(file => formData.append('files', file))
-        const auth = getStoredAuth()
-        await fetch(`${BASE_URL}/garments/${ugi}/files`, {
-          method: 'POST',
-          headers: {
-            ...(auth?.apiKey ? { Authorization: `Bearer ${auth.apiKey}` } : {}),
-          },
-          body: formData,
-        })
+        for (const file of files) {
+          const formData = new FormData()
+          formData.append('file', file)  // API param name is 'file' (singular)
+          const res = await fetch(`${BASE_URL}/api/v1/garments/${ugi}/files`, {
+            method: 'POST',
+            headers,
+            body: formData,
+          })
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({ detail: 'Upload failed' }))
+            throw new Error((err as { detail?: string }).detail || `HTTP ${res.status}`)
+          }
+        }
       } catch {
         await new Promise(r => setTimeout(r, 800))
       }
@@ -185,7 +204,7 @@ export const api = {
 
     getScanStatus: async (ugi: string): Promise<ScanStatus> => {
       try {
-        return await request<ScanStatus>(`/garments/${ugi}/scan/status`)
+        return await request<ScanStatus>(`/api/v1/garments/${ugi}/scan/status`)
       } catch {
         // Mock progressive pipeline for development
         await new Promise(r => setTimeout(r, 200))
@@ -213,7 +232,7 @@ export const api = {
       try {
         const formData = new FormData()
         formData.append('image', imageFile)
-        const result = await request<{ composition: string }>('/scan/label', {
+        const result = await request<{ composition: string }>('/api/v1/scan/label', {
           method: 'POST',
           headers: {},
           body: formData,
@@ -230,7 +249,7 @@ export const api = {
   fabrics: {
     getPhysics: async (composition: string): Promise<FabricPhysics> => {
       try {
-        return await request<FabricPhysics>('/fabrics/physics', {
+        return await request<FabricPhysics>('/api/v1/fabrics/physics', {
           method: 'POST',
           body: JSON.stringify({ composition }),
         })
@@ -257,7 +276,7 @@ export const api = {
   brand: {
     getStats: async (): Promise<BrandStats> => {
       try {
-        return await request<BrandStats>('/brand/stats')
+        return await request<BrandStats>('/api/v1/brand/stats')
       } catch {
         await new Promise(r => setTimeout(r, 300))
         return {
@@ -268,5 +287,333 @@ export const api = {
         }
       }
     },
+  },
+}
+
+// ─────────────────────────────────────────────────────────────
+// MANUFACTURER MARKETPLACE MOCK DATA
+// ─────────────────────────────────────────────────────────────
+
+const MOCK_MANUFACTURERS: ManufacturerListItem[] = [
+  {
+    id: 'mfr-001', profileId: 'prof-001', slug: 'orient-textile-hangzhou',
+    displayName: 'Orient Textile — Hangzhou',
+    country: 'CN', city: 'Hangzhou',
+    heroImageUrl: null,
+    specialisations: ['Woven', 'Knitwear', 'Outerwear'],
+    certifications: ['OEKO-TEX', 'ISO 9001'],
+    priceTier: 'mid',
+    moqMin: 200, bulkLeadTimeDays: 45,
+    ratingAvg: 4.3, ratingCount: 18,
+    isVerified: true, isFeatured: true,
+    responseTimeHours: 12,
+  },
+  {
+    id: 'mfr-002', profileId: 'prof-002', slug: 'artisan-mills-bangalore',
+    displayName: 'Artisan Mills — Bangalore',
+    country: 'IN', city: 'Bangalore',
+    heroImageUrl: null,
+    specialisations: ['Knitwear', 'Activewear', 'Swimwear'],
+    certifications: ['GOTS', 'Fair Trade', 'OEKO-TEX'],
+    priceTier: 'mid',
+    moqMin: 100, bulkLeadTimeDays: 60,
+    ratingAvg: 4.7, ratingCount: 31,
+    isVerified: true, isFeatured: false,
+    responseTimeHours: 8,
+  },
+  {
+    id: 'mfr-003', profileId: 'prof-003', slug: 'euro-stitch-porto',
+    displayName: 'EuroStitch — Porto',
+    country: 'PT', city: 'Porto',
+    heroImageUrl: null,
+    specialisations: ['Suits', 'Woven', 'Outerwear'],
+    certifications: ['BSCI', 'ISO 9001'],
+    priceTier: 'premium',
+    moqMin: 50, bulkLeadTimeDays: 90,
+    ratingAvg: 4.9, ratingCount: 12,
+    isVerified: true, isFeatured: true,
+    responseTimeHours: 24,
+  },
+  {
+    id: 'mfr-004', profileId: 'prof-004', slug: 'delta-apparel-dhaka',
+    displayName: 'Delta Apparel — Dhaka',
+    country: 'BD', city: 'Dhaka',
+    heroImageUrl: null,
+    specialisations: ['Woven', 'Denim'],
+    certifications: ['BSCI'],
+    priceTier: 'mass',
+    moqMin: 500, bulkLeadTimeDays: 55,
+    ratingAvg: 3.8, ratingCount: 7,
+    isVerified: false, isFeatured: false,
+    responseTimeHours: 48,
+  },
+  {
+    id: 'mfr-005', profileId: 'prof-005', slug: 'saigon-fashion-group',
+    displayName: 'Saigon Fashion Group',
+    country: 'VN', city: 'Ho Chi Minh City',
+    heroImageUrl: null,
+    specialisations: ['Activewear', 'Swimwear', 'Knitwear'],
+    certifications: ['OEKO-TEX', 'Bluesign'],
+    priceTier: 'mid',
+    moqMin: 150, bulkLeadTimeDays: 50,
+    ratingAvg: 4.5, ratingCount: 22,
+    isVerified: true, isFeatured: false,
+    responseTimeHours: 18,
+  },
+  {
+    id: 'mfr-006', profileId: 'prof-006', slug: 'atelier-istanbul',
+    displayName: 'Atelier Istanbul',
+    country: 'TR', city: 'Istanbul',
+    heroImageUrl: null,
+    specialisations: ['Leather', 'Denim', 'Suits'],
+    certifications: ['OEKO-TEX', 'SA8000'],
+    priceTier: 'premium',
+    moqMin: 75, bulkLeadTimeDays: 75,
+    ratingAvg: 4.6, ratingCount: 9,
+    isVerified: true, isFeatured: false,
+    responseTimeHours: 16,
+  },
+  {
+    id: 'mfr-007', profileId: 'prof-007', slug: 'pacific-thread-sydney',
+    displayName: 'Pacific Thread — Sydney',
+    country: 'AU', city: 'Sydney',
+    heroImageUrl: null,
+    specialisations: ['Woven', 'Knitwear', 'Accessories'],
+    certifications: ['GOTS', 'Fair Trade'],
+    priceTier: 'premium',
+    moqMin: 30, bulkLeadTimeDays: 30,
+    ratingAvg: 4.8, ratingCount: 5,
+    isVerified: true, isFeatured: false,
+    responseTimeHours: 4,
+  },
+  {
+    id: 'mfr-008', profileId: 'prof-008', slug: 'milan-luxury-studio',
+    displayName: 'Milan Luxury Studio',
+    country: 'IT', city: 'Milan',
+    heroImageUrl: null,
+    specialisations: ['Suits', 'Leather', 'Accessories'],
+    certifications: ['ISO 9001'],
+    priceTier: 'luxury',
+    moqMin: 20, bulkLeadTimeDays: 120,
+    ratingAvg: 5.0, ratingCount: 4,
+    isVerified: true, isFeatured: true,
+    responseTimeHours: 48,
+  },
+]
+
+const MOCK_RATINGS = [
+  {
+    id: 'rat-001', brandName: 'Harbour & Co.', overallScore: 5,
+    qualityScore: 5, communicationScore: 4, timelinessScore: 5,
+    review: 'Outstanding craftsmanship. Delivered on spec, 3 days early. Will be back for SS26.',
+    ordersCompleted: 3, isVerifiedPurchase: true,
+    createdAt: new Date(Date.now() - 60 * 86400000).toISOString(),
+  },
+  {
+    id: 'rat-002', brandName: 'Solstice Apparel', overallScore: 4,
+    qualityScore: 4, communicationScore: 5, timelinessScore: 4,
+    review: 'Very responsive. Minor size grading issue on first sample but quickly resolved.',
+    ordersCompleted: 1, isVerifiedPurchase: true,
+    createdAt: new Date(Date.now() - 90 * 86400000).toISOString(),
+  },
+  {
+    id: 'rat-003', brandName: 'The Label', overallScore: 4,
+    qualityScore: 5, communicationScore: 4, timelinessScore: 3,
+    review: 'Quality is exceptional. Lead time ran 2 weeks over. Communication was always clear.',
+    ordersCompleted: 2, isVerifiedPurchase: true,
+    createdAt: new Date(Date.now() - 120 * 86400000).toISOString(),
+  },
+]
+
+function getMockManufacturerProfile(slug: string): ManufacturerProfile | null {
+  const item = MOCK_MANUFACTURERS.find(m => m.slug === slug)
+  if (!item) return null
+
+  return {
+    ...item,
+    description: `${item.displayName} is a leading apparel manufacturer specialising in ${item.specialisations.join(', ').toLowerCase()}. With a commitment to quality and ethical production, we serve brands across ${item.exportMarkets?.join(', ') ?? 'the globe'}.`,
+    galleryImageUrls: [],
+    videoUrl: null,
+    yearEstablished: 2005 + parseInt(item.id.replace('mfr-', '')) * 2,
+    employeeCount: item.priceTier === 'mass' ? '500-2000' : item.priceTier === 'luxury' ? '10-50' : '100-500',
+    monthlyCapacityMin: item.moqMin ? item.moqMin * 5 : null,
+    monthlyCapacityMax: item.moqMin ? item.moqMin * 20 : null,
+    moqMin: item.moqMin ?? 100,
+    moqMax: null,
+    sampleLeadTimeDays: Math.round((item.bulkLeadTimeDays ?? 60) * 0.4),
+    bulkLeadTimeDays: item.bulkLeadTimeDays ?? 60,
+    materials: ['Cotton', 'Polyester', 'Viscose', 'Elastane'].slice(0, 3),
+    exportMarkets: ['AU', 'US', 'UK', 'EU'],
+    techPackFormats: ['PDF', 'Excel', 'CLO3D'],
+    languages: ['English', 'Mandarin'].slice(0, item.country === 'CN' ? 2 : 1),
+    ratings: MOCK_RATINGS,
+    connectionStatus: null,
+  }
+}
+
+const MOCK_CONNECTIONS: BrandConnection[] = [
+  {
+    id: 'conn-001',
+    manufacturerProfileId: 'prof-001',
+    manufacturerSlug: 'orient-textile-hangzhou',
+    manufacturerName: 'Orient Textile — Hangzhou',
+    manufacturerCountry: 'CN',
+    manufacturerHeroImageUrl: null,
+    status: 'CONNECTED',
+    enquiryMessage: 'Looking for a woven partner for our AW26 collection.',
+    respondedAt: new Date(Date.now() - 5 * 86400000).toISOString(),
+    connectedAt: new Date(Date.now() - 3 * 86400000).toISOString(),
+    createdAt: new Date(Date.now() - 7 * 86400000).toISOString(),
+  },
+  {
+    id: 'conn-002',
+    manufacturerProfileId: 'prof-003',
+    manufacturerSlug: 'euro-stitch-porto',
+    manufacturerName: 'EuroStitch — Porto',
+    manufacturerCountry: 'PT',
+    manufacturerHeroImageUrl: null,
+    status: 'RESPONDED',
+    enquiryMessage: 'Interested in your tailored suit capabilities for our workwear range.',
+    respondedAt: new Date(Date.now() - 1 * 86400000).toISOString(),
+    connectedAt: null,
+    createdAt: new Date(Date.now() - 4 * 86400000).toISOString(),
+  },
+  {
+    id: 'conn-003',
+    manufacturerProfileId: 'prof-005',
+    manufacturerSlug: 'saigon-fashion-group',
+    manufacturerName: 'Saigon Fashion Group',
+    manufacturerCountry: 'VN',
+    manufacturerHeroImageUrl: null,
+    status: 'ENQUIRY',
+    enquiryMessage: 'Looking for an activewear partner for our Back It campaign.',
+    respondedAt: null,
+    connectedAt: null,
+    createdAt: new Date(Date.now() - 1 * 86400000).toISOString(),
+  },
+]
+
+// ─── Manufacturer API namespace ───────────────────────────────
+
+export const manufacturerApi = {
+  list: async (filters?: ManufacturerFilters): Promise<ManufacturerListResponse> => {
+    try {
+      const params = new URLSearchParams()
+      if (filters) {
+        Object.entries(filters).forEach(([k, v]) => {
+          if (v !== undefined) params.set(k, Array.isArray(v) ? v.join(',') : String(v))
+        })
+      }
+      return await request<ManufacturerListResponse>(`/api/v1/manufacturers?${params}`)
+    } catch {
+      await new Promise(r => setTimeout(r, 500))
+      let results = [...MOCK_MANUFACTURERS]
+
+      if (filters?.search) {
+        const q = filters.search.toLowerCase()
+        results = results.filter(m =>
+          m.displayName.toLowerCase().includes(q) ||
+          m.country.toLowerCase().includes(q) ||
+          (m.city?.toLowerCase().includes(q) ?? false) ||
+          m.specialisations.some(s => s.toLowerCase().includes(q))
+        )
+      }
+      if (filters?.country?.length) {
+        results = results.filter(m => filters.country!.includes(m.country))
+      }
+      if (filters?.specialisations?.length) {
+        results = results.filter(m =>
+          filters.specialisations!.some(s => m.specialisations.includes(s))
+        )
+      }
+      if (filters?.priceTiers?.length) {
+        results = results.filter(m => m.priceTier && filters.priceTiers!.includes(m.priceTier))
+      }
+      if (filters?.certifications?.length) {
+        results = results.filter(m =>
+          filters.certifications!.some(c => m.certifications.includes(c))
+        )
+      }
+      if (filters?.maxMoq !== undefined) {
+        results = results.filter(m => (m.moqMin ?? 0) <= filters.maxMoq!)
+      }
+      if (filters?.verifiedOnly) {
+        results = results.filter(m => m.isVerified)
+      }
+
+      const page = filters?.page ?? 1
+      const limit = filters?.limit ?? 12
+      const start = (page - 1) * limit
+      return {
+        manufacturers: results.slice(start, start + limit),
+        total: results.length,
+        page,
+        limit,
+      }
+    }
+  },
+
+  getBySlug: async (slug: string): Promise<ManufacturerProfile | null> => {
+    try {
+      return await request<ManufacturerProfile>(`/api/v1/manufacturers/${slug}`)
+    } catch {
+      await new Promise(r => setTimeout(r, 300))
+      return getMockManufacturerProfile(slug)
+    }
+  },
+
+  sendEnquiry: async (input: SendEnquiryInput): Promise<{ connectionId: string }> => {
+    try {
+      return await request<{ connectionId: string }>('/api/v1/manufacturers/connections', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      })
+    } catch {
+      await new Promise(r => setTimeout(r, 800))
+      return { connectionId: `conn-${Date.now()}` }
+    }
+  },
+
+  getConnections: async (): Promise<BrandConnection[]> => {
+    try {
+      return await request<BrandConnection[]>('/api/v1/manufacturers/connections/mine')
+    } catch {
+      await new Promise(r => setTimeout(r, 400))
+      return MOCK_CONNECTIONS
+    }
+  },
+
+  rate: async (input: RateManufacturerInput): Promise<void> => {
+    try {
+      await request(`/api/v1/manufacturers/${input.manufacturerProfileId}/ratings`, {
+        method: 'POST',
+        body: JSON.stringify(input),
+      })
+    } catch {
+      await new Promise(r => setTimeout(r, 600))
+    }
+  },
+
+  createProfile: async (input: CreateProfileInput): Promise<{ slug: string }> => {
+    try {
+      return await request<{ slug: string }>('/api/v1/manufacturers/profile', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      })
+    } catch {
+      await new Promise(r => setTimeout(r, 1000))
+      return { slug: `manufacturer-${Date.now()}` }
+    }
+  },
+
+  updateProfile: async (slug: string, input: Partial<CreateProfileInput>): Promise<void> => {
+    try {
+      await request(`/api/v1/manufacturers/${slug}/profile`, {
+        method: 'PATCH',
+        body: JSON.stringify(input),
+      })
+    } catch {
+      await new Promise(r => setTimeout(r, 800))
+    }
   },
 }

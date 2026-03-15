@@ -14,7 +14,7 @@ Example:
     parser = CompositionParser()
     result = parser.parse("85% Polyester, 15% Elastane")
     # {
-    #   "fibres": [{"fibre": "polyester", "pct": 85}, {"fibre": "elastane", "pct": 15}],
+    #   "fibres": [{"fibre": "polyester", "percentage": 85}, {"fibre": "elastane", "percentage": 15}],
     #   "normalized_key": "elastane:15|polyester:85",
     #   "confidence": 0.95,
     #   "warnings": []

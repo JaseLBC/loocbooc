@@ -1,0 +1,37 @@
+# Loocbooc Pipeline Worker — Docker requirements
+# Minimal set for MVP with mock reconstruction (no COLMAP/open3d required)
+
+# Celery + Redis
+celery>=5.3,<6.0
+redis>=5.0,<6.0
+kombu>=5.3,<6.0
+
+# Numerics (used by physics estimator if called)
+numpy>=1.26,<2.0
+Pillow>=10.0,<11.0
+scipy>=1.11,<2.0
+
+# HTTP (webhooks + API calls)
+httpx>=0.27,<1.0
+
+# Cloud storage (MinIO via S3-compat)
+boto3>=1.34,<2.0
+botocore>=1.34,<2.0
+
+# Logging + config
+structlog>=24.0,<25.0
+pydantic>=2.5,<3.0
+pydantic-settings>=2.2,<3.0
+
+# Pattern file parsing (lazy-imported, safe to include)
+ezdxf>=1.2,<2.0
+
+# EXIF metadata
+piexif>=1.1,<2.0
+exifread>=3.0,<4.0
+
+# Image hashing (for camera angle sorting)
+imagehash>=4.3,<5.0
+
+# GLB export (lightweight 3D format lib)
+pygltflib>=1.16,<2.0

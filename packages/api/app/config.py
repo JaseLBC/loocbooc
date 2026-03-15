@@ -36,12 +36,18 @@ class Settings(BaseSettings):
     API_KEY_PREFIX: str = "lb_live_"
 
     # --- Storage ---
-    STORAGE_BACKEND: Literal["s3", "gcs", "local"] = "local"
+    STORAGE_BACKEND: Literal["s3", "gcs", "local", "minio"] = "local"
     STORAGE_BUCKET: str = "loocbooc-garments"
     AWS_ACCESS_KEY_ID: str = ""
     AWS_SECRET_ACCESS_KEY: str = ""
     AWS_REGION: str = "ap-southeast-2"
     LOCAL_STORAGE_PATH: str = "/tmp/loocbooc-storage"
+
+    # --- MinIO (S3-compatible local storage for dev) ---
+    MINIO_ENDPOINT: str = "http://localhost:9000"
+    MINIO_ACCESS_KEY: str = "minioadmin"
+    MINIO_SECRET_KEY: str = "minioadmin"
+    MINIO_BUCKET: str = "loocbooc-dev"
 
     # --- Anthropic ---
     ANTHROPIC_API_KEY: str = ""
@@ -79,6 +85,31 @@ class Settings(BaseSettings):
     def validate_db_url(cls, v: str) -> str:
         if not v:
             raise ValueError("DATABASE_URL must be set")
+        return v
+
+    @field_validator("SECRET_KEY")
+    @classmethod
+    def validate_secret_key(cls, v: str, info) -> str:
+        import logging as _logging
+        _logger = _logging.getLogger(__name__)
+        weak_defaults = {
+            "changeme-in-production-use-32-plus-chars",
+            "changeme",
+            "secret",
+            "development",
+        }
+        if v in weak_defaults and len(v) < 32:
+            # In development this is acceptable; in production this is a vulnerability
+            _logger.warning(
+                "SECRET_KEY is set to a weak default. "
+                "Set a strong random SECRET_KEY in production. "
+                "Generate one with: python -c \"import secrets; print(secrets.token_hex(32))\""
+            )
+        if len(v) < 16:
+            raise ValueError(
+                "SECRET_KEY must be at least 16 characters. "
+                "Use a strong random key in production."
+            )
         return v
 
 

@@ -4,6 +4,13 @@ from app.models.garment import Garment, GarmentFile, GarmentVersion
 from app.models.fabric import FabricPhysics
 from app.models.avatar import Avatar, AvatarMeasurement
 from app.models.try_on import FitScore, TryOn
+from app.models.manufacturer import (
+    BrandManufacturerConnection,
+    ConnectionStatus,
+    Manufacturer,
+    ManufacturerProfile,
+    ManufacturerRating,
+)
 
 __all__ = [
     "Brand",
@@ -17,4 +24,10 @@ __all__ = [
     "AvatarMeasurement",
     "TryOn",
     "FitScore",
+    # Manufacturer marketplace
+    "Manufacturer",
+    "ManufacturerProfile",
+    "ManufacturerRating",
+    "BrandManufacturerConnection",
+    "ConnectionStatus",
 ]

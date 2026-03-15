@@ -293,14 +293,22 @@ async def upload_garment_file(
 
 
 async def _trigger_pipeline(garment_id: str, trigger: str, file_id: str):
-    """Push a job to the 3D pipeline queue."""
+    """Push a job to the 3D pipeline queue.
+
+    Note: garment_id IS the UGI (e.g. LB-CHAR-DR-K9F3M2A1-X7Q).
+    The pipeline worker uses BRPOP to consume from this queue.
+    """
+    import uuid as _uuid
     from app.redis import cache
     await cache.push_job(
         settings.PIPELINE_JOB_QUEUE,
         {
-            "garment_id": garment_id,
+            "job_id": str(_uuid.uuid4()),
+            "garment_id": garment_id,   # This IS the UGI
+            "ugi": garment_id,          # Explicit UGI field for pipeline worker
             "trigger": trigger,
             "file_id": file_id,
+            "use_mock_reconstruction": True,  # Always use mock in dev
         },
     )
     logger.info(f"Triggered 3D pipeline for garment {garment_id} (trigger: {trigger})")
