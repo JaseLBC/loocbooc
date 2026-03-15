@@ -5,28 +5,19 @@ Pipeline jobs are processed asynchronously via Celery with Redis as broker.
 
 The API endpoint:
   1. Validates the request
-  2. Creates a PipelineJob
-  3. Calls process_garment_task.delay(job_id)
-  4. Returns immediately with {job_id, status_url}
+  2. Pushes a job dict to Redis list `pipeline:jobs`
+  3. Returns immediately
 
 The worker:
-  1. Picks up the job from the Redis queue
-  2. Loads job details from DB/Redis
-  3. Runs the PipelineOrchestrator
-  4. Uploads output files to S3/GCS
-  5. Updates the garment record in DB
-  6. Notifies API via Redis pub/sub or webhook
+  1. Background thread polls `pipeline:jobs` via BRPOP
+  2. Dispatches to `process_garment_task.delay()`
+  3. Runs PipelineOrchestrator with mock reconstruction (dev mode)
+  4. Updates job status in Redis (QUEUED → PROCESSING → COMPLETE)
+  5. Uploads placeholder .lgmt to MinIO
+  6. Notifies API via PATCH /garments/{ugi} with status: active
 
-Progress polling:
-  Client polls GET /garments/{ugi}/scan/status
-  Returns: {status, progress, message, output_urls}
-
-Usage:
-  Start worker:
-    celery -A pipeline.workers.celery_worker worker -Q pipeline -c 2 --loglevel=info
-
-  Queue a job (from API):
-    process_garment_task.delay(job_dict)
+Start worker:
+  celery -A pipeline.workers.celery_worker worker -Q pipeline -c 1 --loglevel=info
 """
 
 from __future__ import annotations
@@ -35,10 +26,14 @@ import asyncio
 import json
 import logging
 import os
+import threading
+import time
+import uuid
 from pathlib import Path
 from typing import Optional
 
 from celery import Celery
+from celery.signals import worker_ready
 from celery.utils.log import get_task_logger
 
 from pipeline.orchestrator import (
@@ -51,11 +46,21 @@ from pipeline.orchestrator import (
 logger = get_task_logger(__name__)
 
 # ---------------------------------------------------------------------------
-# Celery application configuration
+# Configuration
 # ---------------------------------------------------------------------------
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", REDIS_URL)
+API_BASE_URL = os.environ.get("API_BASE_URL", "http://api:8000")
+PIPELINE_API_KEY = os.environ.get("PIPELINE_API_KEY", "lb_live_testkey_charcoal")
+MINIO_ENDPOINT = os.environ.get("MINIO_ENDPOINT", "http://minio:9000")
+MINIO_ACCESS_KEY = os.environ.get("MINIO_ACCESS_KEY", "minioadmin")
+MINIO_SECRET_KEY = os.environ.get("MINIO_SECRET_KEY", "minioadmin")
+MINIO_BUCKET = os.environ.get("MINIO_BUCKET", "loocbooc-dev")
+PIPELINE_JOBS_QUEUE = "pipeline:jobs"
 
+# ---------------------------------------------------------------------------
+# Celery application configuration
+# ---------------------------------------------------------------------------
 celery_app = Celery(
     "loocbooc_pipeline",
     broker=REDIS_URL,
@@ -69,19 +74,115 @@ celery_app.conf.update(
     timezone="UTC",
     enable_utc=True,
     task_track_started=True,
-    task_acks_late=True,           # Ack only after successful completion
-    worker_prefetch_multiplier=1,  # Process one job at a time per worker
+    task_acks_late=True,
+    worker_prefetch_multiplier=1,
     task_routes={
         "pipeline.workers.celery_worker.process_garment_task": {"queue": "pipeline"},
     },
-    # Retry config
-    task_default_retry_delay=60,   # Wait 60s before retry
+    task_default_retry_delay=60,
     task_max_retries=3,
 )
 
 
 # ---------------------------------------------------------------------------
-# Main task
+# Background thread: poll Redis list `pipeline:jobs`
+# ---------------------------------------------------------------------------
+
+@worker_ready.connect
+def start_redis_list_poller(sender, **kwargs):
+    """Start background thread to poll pipeline:jobs Redis list when Celery starts."""
+    thread = threading.Thread(target=_poll_redis_jobs, daemon=True, name="redis-job-poller")
+    thread.start()
+    logger.info(f"Started Redis list poller on queue: {PIPELINE_JOBS_QUEUE}")
+
+
+def _poll_redis_jobs():
+    """
+    Background thread: pop jobs from the `pipeline:jobs` Redis list and
+    dispatch them to the `process_garment_task` Celery task.
+
+    The API pushes job dicts with:
+      { job_id, garment_id, ugi, trigger, file_id, use_mock_reconstruction }
+    """
+    import redis as redis_lib
+
+    logger.info(f"Redis job poller starting. Broker: {REDIS_URL}")
+    r = None
+
+    while True:
+        try:
+            if r is None:
+                r = redis_lib.from_url(REDIS_URL, socket_timeout=10)
+                logger.info("Redis job poller connected.")
+
+            # BRPOP blocks until a job arrives (5s timeout to allow clean shutdown)
+            result = r.brpop(PIPELINE_JOBS_QUEUE, timeout=5)
+
+            if result:
+                _, raw = result
+                job_data = json.loads(raw)
+                ugi = job_data.get("ugi") or job_data.get("garment_id")
+
+                if not ugi:
+                    logger.warning(f"Job missing UGI/garment_id, skipping: {job_data}")
+                    continue
+
+                # Build full PipelineJob dict for process_garment_task
+                job_dict = {
+                    "job_id": job_data.get("job_id") or str(uuid.uuid4()),
+                    "ugi": ugi,
+                    "use_mock_reconstruction": True,  # Always mock in dev
+                    "photo_paths": job_data.get("photo_paths", []),
+                    "pattern_files": job_data.get("pattern_files", []),
+                    "clo_file": job_data.get("clo_file"),
+                    "video_path": job_data.get("video_path"),
+                    "fabric_composition": job_data.get("fabric_composition"),
+                    "garment_name": job_data.get("garment_name", ugi),
+                    "garment_type": job_data.get("garment_type"),
+                    "brand": job_data.get("brand"),
+                    "season": job_data.get("season"),
+                    "colorway": job_data.get("colorway"),
+                    "output_dir": f"/tmp/loocbooc_pipeline/{ugi}",
+                    "redis_progress_key": f"pipeline:progress:{ugi}",
+                }
+
+                logger.info(f"Dispatching pipeline job for UGI: {ugi} (trigger: {job_data.get('trigger')})")
+                process_garment_task.delay(job_dict)
+
+                # Update Redis status to QUEUED
+                _update_progress(ugi, "QUEUED", 0, "Job queued for processing")
+
+        except KeyboardInterrupt:
+            logger.info("Redis job poller shutting down.")
+            break
+        except redis_lib.exceptions.ConnectionError as e:
+            logger.warning(f"Redis connection lost in poller: {e}. Reconnecting in 5s...")
+            r = None
+            time.sleep(5)
+        except Exception as e:
+            logger.error(f"Redis poller unexpected error: {e}", exc_info=True)
+            time.sleep(2)
+
+
+def _update_progress(ugi: str, status: str, progress: int, message: str):
+    """Update pipeline progress in Redis."""
+    try:
+        import redis as redis_lib
+        r = redis_lib.from_url(REDIS_URL, decode_responses=True)
+        data = {
+            "ugi": ugi,
+            "status": status,
+            "progress": progress,
+            "message": message,
+            "updated_at": time.time(),
+        }
+        r.setex(f"pipeline:progress:{ugi}", 86400, json.dumps(data))
+    except Exception as e:
+        logger.warning(f"Progress update failed for {ugi}: {e}")
+
+
+# ---------------------------------------------------------------------------
+# Main Celery task
 # ---------------------------------------------------------------------------
 
 @celery_app.task(
@@ -93,48 +194,42 @@ celery_app.conf.update(
 def process_garment_task(self, job_dict: dict) -> dict:
     """
     Main Celery task for garment reconstruction.
-
-    Args:
-        job_dict: Serialized PipelineJob dictionary
-
-    Returns:
-        Serialized PipelineResult dictionary
+    Uses MockPhotogrammetryReconstructor in dev mode (no COLMAP required).
     """
     job = _deserialize_job(job_dict)
     logger.info(f"Starting pipeline job: {job.job_id} (UGI: {job.ugi})")
 
-    # Update task state for Celery monitoring
+    _update_progress(job.ugi, "PROCESSING", 5, "Starting reconstruction")
     self.update_state(state="PROCESSING", meta={"progress": 5, "job_id": job.job_id})
 
     try:
-        # Run the async orchestrator in a sync context
         orchestrator = PipelineOrchestrator()
         result = asyncio.run(orchestrator.process_garment(job))
 
         if result.status == JobStatus.FAILED:
             logger.error(f"Job {job.job_id} failed: {result.error}")
-            # Retry if it's a transient error
+            _update_progress(job.ugi, "FAILED", 0, f"Failed: {result.error}")
             if _is_retryable_error(result.error):
-                raise self.retry(
-                    exc=RuntimeError(result.error),
-                    countdown=60,
-                )
+                raise self.retry(exc=RuntimeError(result.error), countdown=60)
 
-        elif result.status == JobStatus.COMPLETE:
-            logger.info(
-                f"Job {job.job_id} complete in {result.duration_seconds:.1f}s. "
-                f"LGMT: {result.lgmt_path}"
-            )
-            # Upload to cloud storage (async, non-blocking)
-            _schedule_upload(result, job)
-            # Notify API
-            _notify_completion(result, job)
+        elif result.status in (JobStatus.COMPLETE, JobStatus.INSUFFICIENT_DATA):
+            if result.status == JobStatus.COMPLETE:
+                logger.info(f"Job {job.job_id} complete in {result.duration_seconds:.1f}s")
+                _update_progress(job.ugi, "COMPLETE", 100, "Reconstruction complete")
 
-        result_dict = _serialize_result(result)
-        return result_dict
+                # Upload .lgmt placeholder to MinIO
+                _upload_lgmt_to_minio(result, job)
+
+                # Notify API: update garment status to active
+                _notify_api_complete(result, job)
+            else:
+                _update_progress(job.ugi, "INSUFFICIENT_DATA", 0, "Insufficient input data")
+
+        return _serialize_result(result)
 
     except Exception as exc:
         logger.error(f"Unexpected error in job {job.job_id}: {exc}", exc_info=True)
+        _update_progress(job.ugi, "FAILED", 0, f"Error: {exc}")
         try:
             raise self.retry(exc=exc, countdown=60)
         except self.MaxRetriesExceededError:
@@ -148,51 +243,101 @@ def process_garment_task(self, job_dict: dict) -> dict:
             ))
 
 
-@celery_app.task(
-    name="pipeline.workers.celery_worker.upload_outputs_task",
-    queue="pipeline",
-)
-def upload_outputs_task(result_dict: dict, job_dict: dict) -> dict:
-    """
-    Upload pipeline output files to cloud storage (S3/GCS).
-    Called after successful reconstruction.
+# ---------------------------------------------------------------------------
+# MinIO upload
+# ---------------------------------------------------------------------------
 
-    Upload paths:
-      s3://loocbooc-garments/{ugi}/v{version}/mesh_hq.glb
-      s3://loocbooc-garments/{ugi}/v{version}/mesh_web.glb
-      s3://loocbooc-garments/{ugi}/v{version}/mesh_mobile.glb
-      s3://loocbooc-garments/{ugi}/v{version}/{ugi}.lgmt
-    """
-    result = _deserialize_result(result_dict)
-    job = _deserialize_job(job_dict)
+def _upload_lgmt_to_minio(result: PipelineResult, job: PipelineJob) -> str | None:
+    """Upload the .lgmt file (or a placeholder) to MinIO."""
+    try:
+        import boto3
+        from botocore.client import Config
 
-    storage_urls = {}
+        # Use actual lgmt_path if produced, else create a placeholder
+        lgmt_content = None
+        if result.lgmt_path and Path(result.lgmt_path).exists():
+            lgmt_content = Path(result.lgmt_path).read_bytes()
+        else:
+            # Placeholder LGMT for dev/mock
+            placeholder = {
+                "ugi": result.ugi,
+                "version": 1,
+                "status": "mock",
+                "mesh_paths": {},
+                "physics_params": result.physics_params or {},
+                "warnings": result.warnings,
+                "generated_at": time.time(),
+            }
+            lgmt_content = json.dumps(placeholder, indent=2).encode("utf-8")
 
-    # Upload each output file
-    files_to_upload = {
-        "mesh_hq": result.mesh_hq_path,
-        "mesh_web": result.mesh_web_path,
-        "mesh_mobile": result.mesh_mobile_path,
-        "lgmt": result.lgmt_path,
-        "usdz": result.usdz_path,
-    }
+        s3 = boto3.client(
+            "s3",
+            endpoint_url=MINIO_ENDPOINT,
+            aws_access_key_id=MINIO_ACCESS_KEY,
+            aws_secret_access_key=MINIO_SECRET_KEY,
+            config=Config(signature_version="s3v4"),
+            region_name="us-east-1",
+        )
 
-    for key, local_path in files_to_upload.items():
-        if not local_path:
-            continue
-        path = Path(local_path)
-        if not path.exists():
-            logger.warning(f"Output file not found for upload: {local_path}")
-            continue
+        key = f"garments/{result.ugi}/{result.ugi}.lgmt"
+        s3.put_object(
+            Bucket=MINIO_BUCKET,
+            Key=key,
+            Body=lgmt_content,
+            ContentType="application/json",
+        )
 
-        try:
-            url = _upload_to_storage(path, result.ugi, key)
-            storage_urls[key] = url
-            logger.info(f"Uploaded {key}: {url}")
-        except Exception as e:
-            logger.error(f"Failed to upload {key}: {e}")
+        url = f"{MINIO_ENDPOINT}/{MINIO_BUCKET}/{key}"
+        logger.info(f"Uploaded .lgmt to MinIO: {url}")
+        return url
 
-    return storage_urls
+    except Exception as e:
+        logger.warning(f"LGMT upload to MinIO failed (non-fatal): {e}")
+        return None
+
+
+# ---------------------------------------------------------------------------
+# API notification
+# ---------------------------------------------------------------------------
+
+def _notify_api_complete(result: PipelineResult, job: PipelineJob) -> None:
+    """Notify API of completion: PATCH garment status to active."""
+    # HTTP PATCH to update garment status
+    try:
+        import httpx
+
+        url = f"{API_BASE_URL}/api/v1/garments/{result.ugi}"
+        response = httpx.patch(
+            url,
+            json={"status": "active"},
+            headers={
+                "X-API-Key": PIPELINE_API_KEY,
+                "Content-Type": "application/json",
+            },
+            timeout=15,
+        )
+        if response.status_code in (200, 204):
+            logger.info(f"Updated garment {result.ugi} status → active")
+        else:
+            logger.warning(
+                f"API status update returned {response.status_code}: {response.text[:200]}"
+            )
+    except Exception as e:
+        logger.warning(f"API status update failed (non-fatal): {e}")
+
+    # Redis pub/sub notification
+    try:
+        import redis as redis_lib
+        r = redis_lib.from_url(REDIS_URL)
+        notification = json.dumps({
+            "event": "pipeline.complete",
+            "job_id": result.job_id,
+            "ugi": result.ugi,
+            "status": result.status.value,
+        })
+        r.publish(f"pipeline:complete:{result.job_id}", notification)
+    except Exception as e:
+        logger.warning(f"Redis pub/sub notification failed: {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -200,7 +345,6 @@ def upload_outputs_task(result_dict: dict, job_dict: dict) -> dict:
 # ---------------------------------------------------------------------------
 
 def _deserialize_job(job_dict: dict) -> PipelineJob:
-    """Deserialize a job dict to PipelineJob."""
     return PipelineJob(
         job_id=job_dict["job_id"],
         ugi=job_dict["ugi"],
@@ -214,7 +358,7 @@ def _deserialize_job(job_dict: dict) -> PipelineJob:
         brand=job_dict.get("brand"),
         season=job_dict.get("season"),
         colorway=job_dict.get("colorway"),
-        use_mock_reconstruction=job_dict.get("use_mock_reconstruction", False),
+        use_mock_reconstruction=job_dict.get("use_mock_reconstruction", True),
         output_dir=job_dict.get("output_dir"),
         redis_progress_key=job_dict.get("redis_progress_key"),
         webhook_url=job_dict.get("webhook_url"),
@@ -222,7 +366,6 @@ def _deserialize_job(job_dict: dict) -> PipelineJob:
 
 
 def _serialize_result(result: PipelineResult) -> dict:
-    """Serialize PipelineResult to dict for Celery/JSON."""
     return {
         "job_id": result.job_id,
         "ugi": result.ugi,
@@ -245,7 +388,6 @@ def _serialize_result(result: PipelineResult) -> dict:
 
 
 def _deserialize_result(result_dict: dict) -> PipelineResult:
-    """Deserialize result dict to PipelineResult."""
     from pipeline.orchestrator import ReconstructionPath
     rp = result_dict.get("reconstruction_path")
     return PipelineResult(
@@ -265,7 +407,6 @@ def _deserialize_result(result_dict: dict) -> PipelineResult:
 
 
 def _is_retryable_error(error: Optional[str]) -> bool:
-    """Determine if an error is transient and worth retrying."""
     if not error:
         return False
     retryable_keywords = [
@@ -274,62 +415,3 @@ def _is_retryable_error(error: Optional[str]) -> bool:
     ]
     error_lower = error.lower()
     return any(kw in error_lower for kw in retryable_keywords)
-
-
-def _schedule_upload(result: PipelineResult, job: PipelineJob) -> None:
-    """Queue an upload task (non-blocking)."""
-    try:
-        upload_outputs_task.delay(
-            _serialize_result(result),
-            {
-                "job_id": job.job_id,
-                "ugi": job.ugi,
-                "garment_name": job.garment_name,
-            },
-        )
-    except Exception as e:
-        logger.warning(f"Could not queue upload task: {e}")
-
-
-def _notify_completion(result: PipelineResult, job: PipelineJob) -> None:
-    """Notify API of job completion via Redis pub/sub or webhook."""
-    # Redis pub/sub notification
-    try:
-        import redis as redis_lib
-        r = redis_lib.from_url(REDIS_URL)
-        notification = json.dumps({
-            "event": "pipeline.complete",
-            "job_id": result.job_id,
-            "ugi": result.ugi,
-            "status": result.status.value,
-        })
-        r.publish(f"pipeline:complete:{result.job_id}", notification)
-    except Exception as e:
-        logger.warning(f"Redis notification failed: {e}")
-
-    # HTTP webhook if configured
-    if job.webhook_url:
-        try:
-            import httpx
-            httpx.post(
-                job.webhook_url,
-                json=_serialize_result(result),
-                timeout=10,
-            )
-        except Exception as e:
-            logger.warning(f"Webhook notification failed: {e}")
-
-
-def _upload_to_storage(path: Path, ugi: str, key: str) -> str:
-    """
-    Upload a file to cloud storage and return the public URL.
-
-    In production: use boto3 (S3) or google-cloud-storage.
-    Currently: stub that returns a placeholder URL.
-    """
-    # TODO: Replace with actual S3/GCS upload
-    bucket = os.environ.get("STORAGE_BUCKET", "loocbooc-garments")
-    s3_key = f"{ugi}/{path.name}"
-    placeholder_url = f"https://storage.loocbooc.com/{bucket}/{s3_key}"
-    logger.info(f"[STUB] Would upload {path} to {placeholder_url}")
-    return placeholder_url

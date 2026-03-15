@@ -75,12 +75,13 @@ services:
         condition: service_healthy
     entrypoint: >
       /bin/sh -c "
+        echo 'Creating MinIO bucket...' &&
         mc alias set myminio http://minio:9000 minioadmin minioadmin &&
-        mc mb myminio/loocbooc-dev --ignore-existing &&
+        mc mb --ignore-existing myminio/loocbooc-dev &&
         mc anonymous set download myminio/loocbooc-dev &&
-        echo 'Bucket loocbooc-dev ready'
+        echo 'Bucket loocbooc-dev ready. Done.'
       "
-    restart: on-failure
+    restart: "no"
 
   # ── FastAPI Backend ──────────────────────────────────────────
   api:
@@ -93,7 +94,8 @@ services:
         echo 'Running migrations...' &&
         alembic upgrade head &&
         echo 'Running seed...' &&
-        python /app/scripts/seed.py || echo 'Seed skipped (already seeded or error)' &&
+        python /app/scripts/seed.py ||
+        echo 'Seed skipped (already seeded or error, continuing)' &&
         echo 'Starting API server...' &&
         uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
       "
@@ -119,8 +121,6 @@ services:
         condition: service_completed_successfully
     ports:
       - "8000:8000"
-    volumes:
-      - ./scripts:/app/scripts:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 15s

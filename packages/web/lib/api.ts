@@ -20,7 +20,8 @@ import type {
 } from '@/types/manufacturer'
 import { generateMockUGI } from '@/lib/utils'
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_V1 = `${BASE_URL}/api/v1`
 
 // ---- HTTP Client ----
 
