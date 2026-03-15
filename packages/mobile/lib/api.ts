@@ -273,7 +273,7 @@ function mockGetScanStatus(ugi: string): ScanStatus {
 }
 
 function mockScanLabel(): LabelScanResult {
-  const options = [
+  const options: LabelScanResult[] = [
     {
       composition: '100% Silk',
       fibres: { silk: 100 },
@@ -296,7 +296,7 @@ function mockScanLabel(): LabelScanResult {
       raw_text: '80% LAINE / WOOL\n20% POLYAMIDE\nDRY CLEAN / NETTOYAGE À SEC',
     },
   ];
-  return options[Math.floor(Math.random() * options.length)];
+  return options[Math.floor(Math.random() * options.length)]!;
 }
 
 function mockGetGarment(ugi: string): Garment {
@@ -318,7 +318,8 @@ function mockGetGarment(ugi: string): Garment {
 function base64ToBlob(base64: string, contentType: string): Blob {
   const base64Data = base64.replace(/^data:[^;]+;base64,/, '');
   const byteCharacters = atob(base64Data);
-  const byteArrays: Uint8Array[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const byteArrays: any[] = [];
   for (let offset = 0; offset < byteCharacters.length; offset += 512) {
     const slice = byteCharacters.slice(offset, offset + 512);
     const byteNumbers = new Array(slice.length);
