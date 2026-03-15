@@ -9,6 +9,14 @@ import type {
   BrandStats,
 } from '@/types'
 import type {
+  CampaignListItem,
+  CampaignDetail,
+  CampaignListResponse,
+  CreateCampaignInput,
+  UpdateCampaignInput,
+  CampaignFilters,
+} from '@/types/back-it'
+import type {
   ManufacturerListItem,
   ManufacturerProfile,
   ManufacturerListResponse,
@@ -615,6 +623,336 @@ export const manufacturerApi = {
       })
     } catch {
       await new Promise(r => setTimeout(r, 800))
+    }
+  },
+}
+
+// ─────────────────────────────────────────────────────────────
+// BACK IT — CAMPAIGN MOCK DATA + API
+// ─────────────────────────────────────────────────────────────
+
+function centsToDisplay(cents: number, currency = 'AUD') {
+  return (cents / 100).toLocaleString('en-AU', { style: 'currency', currency, maximumFractionDigits: 0 })
+}
+
+const now = Date.now()
+const day = 86_400_000
+
+const MOCK_CAMPAIGNS: CampaignListItem[] = [
+  {
+    id: 'camp-001',
+    slug: 'midnight-linen-blazer-aw26',
+    title: 'Midnight Linen Blazer — AW26',
+    status: 'active',
+    garmentId: 'gmt-001',
+    garmentName: 'Midnight Linen Blazer',
+    garmentCategory: 'outerwear',
+    retailPriceCents: 42000,
+    backerPriceCents: 29000,
+    depositPercent: 100,
+    currency: 'AUD',
+    moq: 150,
+    currentBackingCount: 112,
+    moqReached: false,
+    moqReachedAt: null,
+    stretchGoalQty: 200,
+    percentComplete: 74.7,
+    campaignStart: new Date(now - 14 * day).toISOString(),
+    campaignEnd: new Date(now + 16 * day).toISOString(),
+    estimatedShipDate: new Date(now + 90 * day).toISOString(),
+    coverImageUrl: null,
+    projectedRevenueCents: 150 * 29000,
+    collectedDepositsCents: 112 * 29000,
+    createdAt: new Date(now - 20 * day).toISOString(),
+    updatedAt: new Date(now - 1 * day).toISOString(),
+  },
+  {
+    id: 'camp-002',
+    slug: 'ribbed-cashmere-dress-aw26',
+    title: 'Ribbed Cashmere Dress — AW26',
+    status: 'moq_reached',
+    garmentId: 'gmt-002',
+    garmentName: 'Ribbed Cashmere Dress',
+    garmentCategory: 'dresses',
+    retailPriceCents: 68000,
+    backerPriceCents: 48000,
+    depositPercent: 100,
+    currency: 'AUD',
+    moq: 100,
+    currentBackingCount: 143,
+    moqReached: true,
+    moqReachedAt: new Date(now - 2 * day).toISOString(),
+    stretchGoalQty: 200,
+    percentComplete: 100,
+    campaignStart: new Date(now - 21 * day).toISOString(),
+    campaignEnd: new Date(now + 9 * day).toISOString(),
+    estimatedShipDate: new Date(now + 75 * day).toISOString(),
+    coverImageUrl: null,
+    projectedRevenueCents: 143 * 48000,
+    collectedDepositsCents: 143 * 48000,
+    createdAt: new Date(now - 28 * day).toISOString(),
+    updatedAt: new Date(now - 2 * day).toISOString(),
+  },
+  {
+    id: 'camp-003',
+    slug: 'wide-leg-wool-trousers-aw26',
+    title: 'Wide Leg Wool Trousers — AW26',
+    status: 'draft',
+    garmentId: 'gmt-003',
+    garmentName: 'Wide Leg Wool Trousers',
+    garmentCategory: 'bottoms',
+    retailPriceCents: 32000,
+    backerPriceCents: 22000,
+    depositPercent: 50,
+    currency: 'AUD',
+    moq: 200,
+    currentBackingCount: 0,
+    moqReached: false,
+    moqReachedAt: null,
+    stretchGoalQty: null,
+    percentComplete: 0,
+    campaignStart: new Date(now + 7 * day).toISOString(),
+    campaignEnd: new Date(now + 37 * day).toISOString(),
+    estimatedShipDate: new Date(now + 120 * day).toISOString(),
+    coverImageUrl: null,
+    projectedRevenueCents: 200 * 22000,
+    collectedDepositsCents: 0,
+    createdAt: new Date(now - 3 * day).toISOString(),
+    updatedAt: new Date(now - 3 * day).toISOString(),
+  },
+  {
+    id: 'camp-004',
+    slug: 'silk-slip-skirt-ss25',
+    title: 'Silk Slip Skirt — SS25',
+    status: 'completed',
+    garmentId: 'gmt-004',
+    garmentName: 'Silk Slip Skirt',
+    garmentCategory: 'bottoms',
+    retailPriceCents: 28000,
+    backerPriceCents: 19500,
+    depositPercent: 100,
+    currency: 'AUD',
+    moq: 80,
+    currentBackingCount: 127,
+    moqReached: true,
+    moqReachedAt: new Date(now - 120 * day).toISOString(),
+    stretchGoalQty: 150,
+    percentComplete: 100,
+    campaignStart: new Date(now - 180 * day).toISOString(),
+    campaignEnd: new Date(now - 150 * day).toISOString(),
+    estimatedShipDate: new Date(now - 60 * day).toISOString(),
+    coverImageUrl: null,
+    projectedRevenueCents: 127 * 19500,
+    collectedDepositsCents: 127 * 19500,
+    createdAt: new Date(now - 200 * day).toISOString(),
+    updatedAt: new Date(now - 60 * day).toISOString(),
+  },
+]
+
+const MOCK_CAMPAIGN_EVENTS = [
+  { id: 'evt-001', eventType: 'campaign.created', createdAt: new Date(now - 20 * day).toISOString(), payload: {} },
+  { id: 'evt-002', eventType: 'campaign.activated', createdAt: new Date(now - 14 * day).toISOString(), payload: {} },
+  { id: 'evt-003', eventType: 'backing.placed', createdAt: new Date(now - 13 * day).toISOString(), payload: { backer: 'Customer #1', size: 'S' } },
+  { id: 'evt-004', eventType: 'backing.placed', createdAt: new Date(now - 11 * day).toISOString(), payload: { backer: 'Customer #2', size: 'M' } },
+  { id: 'evt-005', eventType: 'backing.placed', createdAt: new Date(now - 8 * day).toISOString(), payload: { backer: 'Customer #3', size: 'L' } },
+  { id: 'evt-006', eventType: 'backing.milestone', createdAt: new Date(now - 5 * day).toISOString(), payload: { milestone: '50 backers reached' } },
+  { id: 'evt-007', eventType: 'backing.placed', createdAt: new Date(now - 3 * day).toISOString(), payload: { backer: 'Customer #4', size: 'M' } },
+  { id: 'evt-008', eventType: 'backing.placed', createdAt: new Date(now - 1 * day).toISOString(), payload: { backer: 'Customer #5', size: 'XS' } },
+]
+
+function generateDailyBackings(campaignStart: string, currentCount: number): Array<{ date: string; count: number; cumulative: number }> {
+  const start = new Date(campaignStart)
+  const today = new Date()
+  const points: Array<{ date: string; count: number; cumulative: number }> = []
+  let cumulative = 0
+  let d = new Date(start)
+
+  while (d <= today) {
+    const daysIn = Math.floor((d.getTime() - start.getTime()) / day)
+    const totalDays = Math.floor((today.getTime() - start.getTime()) / day) + 1
+    // S-curve distribution
+    const progress = daysIn / Math.max(totalDays, 1)
+    const idealCumulative = Math.round(currentCount * (1 / (1 + Math.exp(-10 * (progress - 0.5)))))
+    const dailyCount = Math.max(0, idealCumulative - cumulative)
+    cumulative = idealCumulative
+    points.push({
+      date: d.toISOString().split('T')[0],
+      count: dailyCount,
+      cumulative,
+    })
+    d = new Date(d.getTime() + day)
+  }
+
+  return points
+}
+
+function getMockCampaignDetail(slug: string): CampaignDetail | null {
+  const item = MOCK_CAMPAIGNS.find(c => c.slug === slug)
+  if (!item) return null
+
+  const sizes = ['XS', 'S', 'M', 'L', 'XL']
+  const sizeDist = [8, 22, 38, 24, 8]
+  const sizeBreakdown = sizes.map((size, i) => ({
+    size,
+    count: Math.round((item.currentBackingCount * sizeDist[i]) / 100),
+    percent: sizeDist[i],
+  }))
+
+  const recentBackings = Array.from({ length: Math.min(item.currentBackingCount, 10) }, (_, i) => ({
+    id: `back-${item.id}-${i}`,
+    size: sizes[Math.floor(Math.random() * sizes.length)],
+    quantity: 1,
+    totalCents: item.backerPriceCents,
+    currency: item.currency,
+    status: 'active' as const,
+    createdAt: new Date(now - i * 3 * 3600 * 1000).toISOString(),
+    displayName: `Customer #${item.currentBackingCount - i}`,
+    country: ['AU', 'US', 'UK', 'CA'][i % 4],
+  }))
+
+  return {
+    ...item,
+    description: `Limited production campaign for ${item.title}. Back now to lock in your backer price and help us hit the MOQ needed for production.`,
+    availableSizes: ['XS', 'S', 'M', 'L', 'XL'],
+    sizeLimits: null,
+    manufacturerId: item.status === 'moq_reached' || item.status === 'completed' ? 'mfr-001' : null,
+    manufacturerName: item.status === 'moq_reached' || item.status === 'completed' ? 'Orient Textile — Hangzhou' : null,
+    shopifyProductId: item.status !== 'draft' ? `shopify-${item.id}` : null,
+    shopifyStoreUrl: 'charcoalclothing.com',
+    galleryUrls: [],
+    manufacturerNotifiedAt: item.moqReached ? item.moqReachedAt : null,
+    sizeBreakdown,
+    recentBackings,
+    events: MOCK_CAMPAIGN_EVENTS,
+    dailyBackings: generateDailyBackings(item.campaignStart, item.currentBackingCount),
+  }
+}
+
+// ─── Campaign API namespace ──────────────────────────────────
+
+export const campaignApi = {
+  list: async (filters?: CampaignFilters): Promise<CampaignListResponse> => {
+    try {
+      const params = new URLSearchParams()
+      if (filters) {
+        Object.entries(filters).forEach(([k, v]) => {
+          if (v !== undefined) params.set(k, String(v))
+        })
+      }
+      return await request<CampaignListResponse>(`/api/v1/campaigns?${params}`)
+    } catch {
+      await new Promise(r => setTimeout(r, 400))
+      let campaigns = [...MOCK_CAMPAIGNS]
+
+      if (filters?.status && filters.status !== 'all') {
+        campaigns = campaigns.filter(c => c.status === filters.status)
+      }
+      if (filters?.search) {
+        const q = filters.search.toLowerCase()
+        campaigns = campaigns.filter(c =>
+          c.title.toLowerCase().includes(q) ||
+          (c.garmentName?.toLowerCase().includes(q) ?? false)
+        )
+      }
+
+      const active = campaigns.filter(c => ['active', 'moq_reached', 'funded', 'in_production', 'shipped'].includes(c.status))
+      const draft = campaigns.filter(c => c.status === 'draft' || c.status === 'scheduled')
+      const completed = campaigns.filter(c => ['completed', 'cancelled', 'expired'].includes(c.status))
+
+      return {
+        campaigns,
+        total: campaigns.length,
+        page: filters?.page ?? 1,
+        limit: filters?.limit ?? 20,
+        stats: {
+          totalActive: active.length,
+          totalDraft: draft.length,
+          totalCompleted: completed.length,
+          totalRevenueCents: MOCK_CAMPAIGNS.reduce((sum, c) => sum + c.collectedDepositsCents, 0),
+          totalBackers: MOCK_CAMPAIGNS.reduce((sum, c) => sum + c.currentBackingCount, 0),
+        },
+      }
+    }
+  },
+
+  getBySlug: async (slug: string): Promise<CampaignDetail | null> => {
+    try {
+      return await request<CampaignDetail>(`/api/v1/campaigns/${slug}`)
+    } catch {
+      await new Promise(r => setTimeout(r, 300))
+      return getMockCampaignDetail(slug)
+    }
+  },
+
+  create: async (input: CreateCampaignInput): Promise<{ slug: string }> => {
+    try {
+      return await request<{ slug: string }>('/api/v1/campaigns', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      })
+    } catch {
+      await new Promise(r => setTimeout(r, 1200))
+      const slug = input.slug || input.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+      const newCampaign: CampaignListItem = {
+        id: `camp-${Date.now()}`,
+        slug,
+        title: input.title,
+        status: 'draft',
+        garmentId: input.garmentId,
+        garmentName: 'Selected Garment',
+        garmentCategory: null,
+        retailPriceCents: input.retailPriceCents,
+        backerPriceCents: input.backerPriceCents,
+        depositPercent: input.depositPercent,
+        currency: input.currency,
+        moq: input.moq,
+        currentBackingCount: 0,
+        moqReached: false,
+        moqReachedAt: null,
+        stretchGoalQty: input.stretchGoalQty ?? null,
+        percentComplete: 0,
+        campaignStart: input.campaignStart,
+        campaignEnd: input.campaignEnd,
+        estimatedShipDate: input.estimatedShipDate ?? null,
+        coverImageUrl: null,
+        projectedRevenueCents: input.moq * input.backerPriceCents,
+        collectedDepositsCents: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+      MOCK_CAMPAIGNS.unshift(newCampaign)
+      return { slug }
+    }
+  },
+
+  update: async (slug: string, input: UpdateCampaignInput): Promise<void> => {
+    try {
+      await request(`/api/v1/campaigns/${slug}`, {
+        method: 'PATCH',
+        body: JSON.stringify(input),
+      })
+    } catch {
+      await new Promise(r => setTimeout(r, 600))
+    }
+  },
+
+  activate: async (slug: string): Promise<void> => {
+    try {
+      await request(`/api/v1/campaigns/${slug}/activate`, { method: 'POST' })
+    } catch {
+      await new Promise(r => setTimeout(r, 800))
+      const campaign = MOCK_CAMPAIGNS.find(c => c.slug === slug)
+      if (campaign) campaign.status = 'active'
+    }
+  },
+
+  cancel: async (slug: string): Promise<void> => {
+    try {
+      await request(`/api/v1/campaigns/${slug}/cancel`, { method: 'POST' })
+    } catch {
+      await new Promise(r => setTimeout(r, 800))
+      const campaign = MOCK_CAMPAIGNS.find(c => c.slug === slug)
+      if (campaign) campaign.status = 'cancelled'
     }
   },
 }

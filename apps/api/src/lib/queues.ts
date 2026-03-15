@@ -50,6 +50,49 @@ export const captureRemainingPaymentsQueue = new Queue("capture-remaining-paymen
   },
 });
 
+// Taste Engine — processes raw taste signals into user preference models
+// Jobs are deduplicated per-user: if a job for that user is already pending/delayed,
+// adding another has no effect (BullMQ deduplication via jobId)
+export const tasteEngineQueue = new Queue("taste-engine", {
+  connection: redis,
+  defaultJobOptions: {
+    ...defaultJobOptions,
+    // Delay processing by 5 minutes — batches rapid signal bursts into one run
+    delay: 5 * 60 * 1000,
+  },
+});
+
+/**
+ * Enqueue a taste engine processing job for a user.
+ * Uses the userId as the jobId for deduplication — if one is already queued,
+ * the new one is dropped (avoiding redundant reprocessing during active sessions).
+ */
+export async function enqueueTasteEngineJob(
+  userId: string,
+  opts: { immediate?: boolean; forceRebuild?: boolean } = {},
+): Promise<void> {
+  const jobId = `taste-engine:${userId}`;
+
+  // Check if a job already exists for this user (pending or delayed)
+  const existingJob = await tasteEngineQueue.getJob(jobId);
+  if (existingJob && !opts.forceRebuild) {
+    const state = await existingJob.getState();
+    if (state === "waiting" || state === "delayed") {
+      // Already queued — don't add another
+      return;
+    }
+  }
+
+  await tasteEngineQueue.add(
+    "process-taste-signals",
+    { userId, forceRebuild: opts.forceRebuild ?? false },
+    {
+      jobId,
+      delay: opts.immediate ? 0 : 5 * 60 * 1000, // 5 min debounce by default
+    },
+  );
+}
+
 /**
  * Helper: enqueue a job with type safety.
  * Centralises queue selection so callers don't import each queue directly.
@@ -58,7 +101,8 @@ export type QueueName =
   | "moq-threshold"
   | "shopify-sync"
   | "email-notification"
-  | "capture-remaining-payments";
+  | "capture-remaining-payments"
+  | "taste-engine";
 
 export async function enqueueJob(
   queue: QueueName,
@@ -71,6 +115,7 @@ export async function enqueueJob(
     "shopify-sync": shopifySyncQueue,
     "email-notification": emailNotificationQueue,
     "capture-remaining-payments": captureRemainingPaymentsQueue,
+    "taste-engine": tasteEngineQueue,
   };
 
   const targetQueue = queueMap[queue];

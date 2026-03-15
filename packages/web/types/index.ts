@@ -212,3 +212,6 @@ export interface WizardState {
   fabricComposition: string
   fabricPhysics: FabricPhysics | null
 }
+
+// Avatar module types
+export * from './avatar'

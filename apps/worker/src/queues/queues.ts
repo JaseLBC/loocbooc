@@ -28,3 +28,14 @@ export const captureRemainingPaymentsQueue = new Queue("capture-remaining-paymen
   connection: redis,
   defaultJobOptions,
 });
+
+// Taste Engine — processes raw taste signals into user preference models
+// Jobs are debounced per-user: rapid signal ingestion coalesces into a single run
+export const tasteEngineQueue = new Queue("taste-engine", {
+  connection: redis,
+  defaultJobOptions: {
+    ...defaultJobOptions,
+    // Taste engine jobs can be deduplicated by userId — only run one per user at a time
+    jobId: undefined, // Set per-job in enqueueTasteEngineJob
+  },
+});

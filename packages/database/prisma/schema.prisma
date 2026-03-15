@@ -185,6 +185,7 @@ model Brand {
   plmRecords PLMRecord[]
   manufacturerRatings    ManufacturerRating[]
   manufacturerConnections BrandManufacturerConnection[]
+  sizeCharts SizeChart[]
 
   @@map("brands")
 }
@@ -612,6 +613,108 @@ model PLMSampleRound {
 
   @@index([plmRecordId])
   @@map("plm_sample_rounds")
+}
+
+// ─────────────────────────────────────────────
+// AVATAR — SIZE CHARTS & TASTE ENGINE
+// ─────────────────────────────────────────────
+
+/// Brand-uploaded size charts used for fit recommendation.
+/// Each chart is brand + category scoped. Rows stored as JSON.
+model SizeChart {
+  id          String   @id @default(cuid())
+  brandId     String
+  garmentId   String?
+  name        String
+  category    String   // dress, top, trouser etc
+  sizeSystem  String   // AU, US, EU, UK, INT
+  rows        Json     // SizeChartRow[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  brand Brand @relation(fields: [brandId], references: [id])
+
+  @@index([brandId])
+  @@index([brandId, category])
+  @@map("size_charts")
+}
+
+/// Raw taste signals — every browse, like, save, backing, quiz answer.
+/// This is the raw event log. The Taste Engine aggregates these into models.
+model TasteSignal {
+  id          String   @id @default(cuid())
+  userId      String
+  avatarId    String?
+  signalType  String   // product_view, product_like, backing_placed etc
+  entityId    String?  // campaignId, skuId, garmentId etc
+  entityType  String?  // "campaign", "sku", "garment"
+  payload     Json?    // flexible signal data
+  sessionId   String?
+  processedAt DateTime? // null until aggregator has consumed this signal
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([avatarId])
+  @@index([signalType])
+  @@index([entityId, entityType])
+  @@index([createdAt])
+  @@index([processedAt])
+  @@map("taste_signals")
+}
+
+/// Synthesised taste preference model per user.
+/// Rebuilt by the Taste Engine worker whenever enough new signals accumulate.
+/// Drives campaign discovery, size pre-selection, and stylist matching.
+model TastePreferenceModel {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  /// Top garment categories ranked by signal strength
+  topCategories       Json     @default("[]")
+  /// Top colours ranked by signal strength
+  topColours          Json     @default("[]")
+  /// Preferred brands (by backing + like signals)
+  preferredBrands     Json     @default("[]")
+  /// Preferred price range in cents
+  priceRangeMinCents  Int?
+  priceRangeMaxCents  Int?
+  /// Style keywords extracted from quiz answers and signal payloads
+  styleKeywords       String[]
+  /// Occasions this user shops for
+  occasions           String[]
+  /// Preferred fit keywords
+  fitKeywords         String[]
+  /// AU size most frequently confirmed as correct
+  confirmedSizeAu     String?
+  /// Total signals processed into this model
+  signalCount         Int      @default(0)
+  /// Signals accumulated since last model rebuild
+  signalsSinceRebuild Int      @default(0)
+  /// Model quality score 0-1
+  modelQuality        Decimal  @default(0) @db.Decimal(3, 2)
+  lastBuiltAt         DateTime @default(now())
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([userId])
+  @@index([lastBuiltAt])
+  @@map("taste_preference_models")
+}
+
+/// Explicit user feedback on recommendations (thumbs up/down, purchased, ignored).
+model RLHFFeedback {
+  id               String   @id @default(cuid())
+  userId           String
+  recommendationId String?
+  entityId         String
+  entityType       String
+  feedback         String   // thumbs_up, thumbs_down, purchased, ignored, saved
+  context          String?  // where the recommendation appeared
+  payload          Json?
+  createdAt        DateTime @default(now())
+
+  @@index([userId])
+  @@index([entityId, entityType])
+  @@map("rlhf_feedback")
 }
 
 // ─────────────────────────────────────────────
