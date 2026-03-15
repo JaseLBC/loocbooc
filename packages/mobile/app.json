@@ -1,0 +1,67 @@
+{
+  "expo": {
+    "name": "Loocbooc Scanner",
+    "slug": "loocbooc-scanner",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#000000"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.loocbooc.scanner",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Loocbooc needs camera access to scan garments and care labels.",
+        "NSMicrophoneUsageDescription": "Loocbooc needs microphone access for video recording during garment scans.",
+        "NSPhotoLibraryUsageDescription": "Loocbooc needs access to save scan captures to your photo library.",
+        "NSMotionUsageDescription": "Loocbooc uses motion sensors to track camera orientation during garment scanning."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#000000"
+      },
+      "package": "com.loocbooc.scanner",
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Loocbooc needs camera access to scan garments and care labels."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow Loocbooc to save scan captures.",
+          "savePhotosPermission": "Allow Loocbooc to save scan captures.",
+          "isAccessMediaLocationEnabled": true
+        }
+      ]
+    ],
+    "scheme": "loocbooc",
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "loocbooc-scanner"
+      }
+    }
+  }
+}
