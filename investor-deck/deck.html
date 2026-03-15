@@ -1,0 +1,1966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loocbooc — Investor Deck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0A0A0A;
+    --bg2: #111111;
+    --bg3: #181818;
+    --accent: #4F46E5;
+    --accent2: #6366F1;
+    --accent-dim: rgba(79,70,229,0.15);
+    --accent-border: rgba(79,70,229,0.3);
+    --white: #FFFFFF;
+    --grey1: #F4F4F5;
+    --grey2: #A1A1AA;
+    --grey3: #52525B;
+    --grey4: #27272A;
+    --font: 'Inter', -apple-system, sans-serif;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    color: var(--white);
+    font-family: var(--font);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ─── DECK CONTAINER ─── */
+  #deck {
+    width: 100%; height: 100%;
+    position: relative;
+  }
+
+  /* ─── SLIDES ─── */
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 60px 80px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s cubic-bezier(0.4,0,0.2,1), transform 0.5s cubic-bezier(0.4,0,0.2,1);
+    transform: translateY(20px);
+    overflow: hidden;
+  }
+
+  .slide.active {
+    opacity: 1;
+    pointer-events: all;
+    transform: translateY(0);
+  }
+
+  .slide.exit-up {
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: opacity 0.35s ease, transform 0.35s ease;
+  }
+
+  /* ─── SLIDE ANATOMY ─── */
+  .slide-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent2);
+    margin-bottom: 20px;
+    align-self: flex-start;
+  }
+
+  .slide-title {
+    font-size: clamp(36px, 5vw, 72px);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    color: var(--white);
+    margin-bottom: 24px;
+    align-self: flex-start;
+    max-width: 900px;
+  }
+
+  .slide-title .accent { color: var(--accent2); }
+  .slide-title .dim { color: var(--grey2); }
+
+  .slide-subtitle {
+    font-size: clamp(16px, 2vw, 22px);
+    font-weight: 400;
+    color: var(--grey2);
+    line-height: 1.6;
+    align-self: flex-start;
+    max-width: 720px;
+    margin-bottom: 40px;
+  }
+
+  /* ─── DIVIDER ─── */
+  .divider {
+    width: 48px;
+    height: 3px;
+    background: var(--accent);
+    border-radius: 2px;
+    align-self: flex-start;
+    margin-bottom: 32px;
+  }
+
+  /* ─── GRID LAYOUTS ─── */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    width: 100%;
+    max-width: 1100px;
+  }
+
+  .grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 20px;
+    width: 100%;
+    max-width: 1100px;
+  }
+
+  /* ─── CARDS ─── */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--grey4);
+    border-radius: 16px;
+    padding: 28px 32px;
+    transition: border-color 0.2s;
+  }
+
+  .card:hover { border-color: var(--accent-border); }
+
+  .card-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent2);
+    margin-bottom: 10px;
+  }
+
+  .card-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 8px;
+    letter-spacing: -0.02em;
+  }
+
+  .card-body {
+    font-size: 14px;
+    color: var(--grey2);
+    line-height: 1.6;
+  }
+
+  /* ─── STAT BLOCKS ─── */
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .stat-number {
+    font-size: clamp(40px, 5vw, 72px);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    color: var(--white);
+    line-height: 1;
+  }
+
+  .stat-number .unit {
+    font-size: 0.45em;
+    font-weight: 600;
+    color: var(--accent2);
+    vertical-align: super;
+  }
+
+  .stat-label {
+    font-size: 13px;
+    color: var(--grey2);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+
+  /* ─── PROBLEM LIST ─── */
+  .problem-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+    max-width: 900px;
+  }
+
+  .problem-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 16px 20px;
+    background: var(--bg2);
+    border: 1px solid var(--grey4);
+    border-radius: 12px;
+  }
+
+  .problem-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: rgba(239,68,68,0.12);
+    border: 1px solid rgba(239,68,68,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 14px;
+  }
+
+  .problem-text {
+    font-size: 15px;
+    color: var(--grey1);
+    line-height: 1.5;
+  }
+
+  .problem-text strong {
+    color: var(--white);
+    font-weight: 600;
+  }
+
+  /* ─── INSIGHT SPLIT ─── */
+  .insight-split {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 32px;
+    align-items: center;
+    width: 100%;
+    max-width: 1000px;
+  }
+
+  .insight-box {
+    background: var(--bg2);
+    border: 1px solid var(--grey4);
+    border-radius: 16px;
+    padding: 32px;
+    text-align: center;
+  }
+
+  .insight-box .insight-icon {
+    font-size: 32px;
+    margin-bottom: 16px;
+  }
+
+  .insight-box .insight-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 8px;
+    letter-spacing: -0.02em;
+  }
+
+  .insight-box .insight-body {
+    font-size: 14px;
+    color: var(--grey2);
+    line-height: 1.6;
+  }
+
+  .insight-plus {
+    font-size: 36px;
+    font-weight: 300;
+    color: var(--grey3);
+    text-align: center;
+  }
+
+  .insight-result {
+    background: linear-gradient(135deg, rgba(79,70,229,0.15), rgba(99,102,241,0.05));
+    border: 1px solid var(--accent-border);
+    border-radius: 16px;
+    padding: 32px;
+    text-align: center;
+    grid-column: 1 / -1;
+    margin-top: 8px;
+  }
+
+  .insight-result .result-title {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 8px;
+    letter-spacing: -0.02em;
+  }
+
+  .insight-result .result-body {
+    font-size: 15px;
+    color: var(--grey2);
+  }
+
+  /* ─── UGI ARCHITECTURE ─── */
+  .ugi-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .ugi-badge {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 16px;
+    padding: 20px 32px;
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: white;
+    text-align: center;
+  }
+
+  .ugi-badge small {
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    opacity: 0.8;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+  }
+
+  .ugi-spokes {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    width: 100%;
+    max-width: 1000px;
+  }
+
+  .ugi-spoke {
+    background: var(--bg2);
+    border: 1px solid var(--grey4);
+    border-radius: 12px;
+    padding: 16px 18px;
+    font-size: 13px;
+    color: var(--grey2);
+    text-align: center;
+    line-height: 1.4;
+  }
+
+  .ugi-spoke strong {
+    display: block;
+    font-size: 14px;
+    color: var(--white);
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  /* ─── PLATFORM GRID ─── */
+  .platform-col {
+    background: var(--bg2);
+    border: 1px solid var(--grey4);
+    border-radius: 16px;
+    padding: 24px 28px;
+  }
+
+  .platform-col-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .platform-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+
+  .platform-col-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--white);
+  }
+
+  .platform-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .platform-list li {
+    font-size: 13px;
+    color: var(--grey2);
+    padding-left: 16px;
+    position: relative;
+    line-height: 1.5;
+  }
+
+  .platform-list li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 8px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent2);
+  }
+
+  /* ─── FLYWHEEL ─── */
+  .flywheel-wrap {
+    display: flex;
+    align-items: center;
+    gap: 48px;
+    width: 100%;
+    max-width: 1100px;
+  }
+
+  .flywheel-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex: 1;
+  }
+
+  .fw-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .fw-num {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent2);
+    flex-shrink: 0;
+  }
+
+  .fw-text {
+    font-size: 14px;
+    color: var(--grey1);
+    line-height: 1.55;
+    padding-top: 6px;
+  }
+
+  .fw-text strong { color: white; font-weight: 600; }
+
+  /* ─── DATA MOAT TABLE ─── */
+  .moat-table {
+    width: 100%;
+    max-width: 900px;
+    border-collapse: collapse;
+  }
+
+  .moat-table th {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--grey3);
+    padding: 12px 20px;
+    text-align: left;
+    border-bottom: 1px solid var(--grey4);
+  }
+
+  .moat-row {
+    border-bottom: 1px solid var(--grey4);
+    transition: background 0.15s;
+  }
+
+  .moat-row:hover { background: var(--bg2); }
+
+  .moat-row td {
+    padding: 16px 20px;
+    font-size: 14px;
+    color: var(--grey2);
+    vertical-align: middle;
+  }
+
+  .moat-row td:first-child {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--white);
+    letter-spacing: -0.02em;
+  }
+
+  .moat-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .moat-bar-bg {
+    height: 6px;
+    background: var(--grey4);
+    border-radius: 3px;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .moat-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 3px;
+    transition: width 1.2s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  /* ─── MARKET CIRCLES ─── */
+  .market-wrap {
+    display: flex;
+    align-items: flex-end;
+    gap: 40px;
+    justify-content: center;
+    margin-bottom: 32px;
+  }
+
+  .market-circle-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .market-circle {
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    border: 2px solid;
+  }
+
+  .mc-tam {
+    width: 200px; height: 200px;
+    background: rgba(79,70,229,0.08);
+    border-color: rgba(79,70,229,0.3);
+  }
+
+  .mc-sam {
+    width: 145px; height: 145px;
+    background: rgba(99,102,241,0.12);
+    border-color: rgba(99,102,241,0.4);
+  }
+
+  .mc-som {
+    width: 90px; height: 90px;
+    background: rgba(139,92,246,0.18);
+    border-color: rgba(139,92,246,0.5);
+  }
+
+  .mc-value {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--white);
+    letter-spacing: -0.02em;
+  }
+
+  .mc-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--grey2);
+    margin-top: 2px;
+  }
+
+  .mc-desc {
+    font-size: 12px;
+    color: var(--grey2);
+    text-align: center;
+    max-width: 160px;
+  }
+
+  /* ─── TRACTION ─── */
+  .traction-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    width: 100%;
+    max-width: 1000px;
+  }
+
+  .traction-card {
+    background: var(--bg2);
+    border: 1px solid var(--grey4);
+    border-radius: 16px;
+    padding: 28px;
+  }
+
+  .traction-big {
+    grid-column: 1 / -1;
+    background: linear-gradient(135deg, rgba(79,70,229,0.1), rgba(99,102,241,0.05));
+    border-color: var(--accent-border);
+  }
+
+  .traction-num {
+    font-size: 48px;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    color: var(--white);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .traction-num .accent { color: var(--accent2); }
+
+  .traction-desc {
+    font-size: 13px;
+    color: var(--grey2);
+    line-height: 1.5;
+  }
+
+  .growth-arrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #22C55E;
+    background: rgba(34,197,94,0.1);
+    border: 1px solid rgba(34,197,94,0.2);
+    border-radius: 20px;
+    padding: 2px 10px;
+    margin-left: 8px;
+  }
+
+  /* ─── ARR CHART ─── */
+  .arr-chart {
+    width: 100%;
+    max-width: 700px;
+  }
+
+  /* ─── TEAM CARD ─── */
+  .team-card {
+    background: var(--bg2);
+    border: 1px solid var(--grey4);
+    border-radius: 20px;
+    padding: 36px 40px;
+    max-width: 520px;
+    width: 100%;
+  }
+
+  .team-name {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--white);
+    margin-bottom: 4px;
+  }
+
+  .team-role {
+    font-size: 14px;
+    color: var(--accent2);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    margin-bottom: 20px;
+  }
+
+  .team-bullets {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .team-bullets li {
+    font-size: 14px;
+    color: var(--grey2);
+    padding-left: 18px;
+    position: relative;
+    line-height: 1.5;
+  }
+
+  .team-bullets li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 8px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent2);
+  }
+
+  .recruiting-card {
+    background: var(--bg3);
+    border: 1px dashed var(--grey3);
+    border-radius: 20px;
+    padding: 36px 40px;
+    max-width: 520px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .recruiting-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 8px;
+  }
+
+  .recruiting-body {
+    font-size: 14px;
+    color: var(--grey3);
+    line-height: 1.6;
+  }
+
+  /* ─── ASK SLIDE ─── */
+  .ask-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    width: 100%;
+    max-width: 1000px;
+  }
+
+  .ask-card {
+    background: var(--bg2);
+    border: 1px solid var(--grey4);
+    border-radius: 16px;
+    padding: 28px 32px;
+  }
+
+  .ask-card.primary {
+    background: linear-gradient(135deg, rgba(79,70,229,0.15), rgba(99,102,241,0.05));
+    border-color: var(--accent-border);
+    grid-column: 1 / -1;
+  }
+
+  .ask-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--grey3);
+    margin-bottom: 8px;
+  }
+
+  .ask-value {
+    font-size: 42px;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    color: var(--white);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .ask-desc {
+    font-size: 14px;
+    color: var(--grey2);
+    line-height: 1.6;
+  }
+
+  /* ─── FUNDS BAR ─── */
+  .funds-row {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .fund-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .fund-name {
+    font-size: 13px;
+    color: var(--grey2);
+    width: 220px;
+    flex-shrink: 0;
+  }
+
+  .fund-bar-bg {
+    height: 6px;
+    background: var(--grey4);
+    border-radius: 3px;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .fund-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 3px;
+  }
+
+  .fund-pct {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--white);
+    width: 36px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* ─── VISION SLIDE ─── */
+  #slide-vision {
+    background: radial-gradient(ellipse at 50% 30%, rgba(79,70,229,0.12) 0%, transparent 70%), var(--bg);
+  }
+
+  .vision-quote {
+    font-size: clamp(22px, 3.5vw, 42px);
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 1.3;
+    color: var(--white);
+    text-align: center;
+    max-width: 880px;
+    margin-bottom: 48px;
+  }
+
+  .vision-quote .accent { color: var(--accent2); }
+  .vision-quote .dim { color: var(--grey2); }
+
+  .vision-stats {
+    display: flex;
+    gap: 48px;
+    justify-content: center;
+  }
+
+  .vision-stat {
+    text-align: center;
+  }
+
+  .vision-stat-num {
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    color: var(--white);
+  }
+
+  .vision-stat-label {
+    font-size: 12px;
+    color: var(--grey2);
+    text-align: center;
+    max-width: 120px;
+    line-height: 1.4;
+    margin-top: 4px;
+  }
+
+  /* ─── TITLE SLIDE ─── */
+  #slide-title {
+    background: radial-gradient(ellipse at 60% 40%, rgba(79,70,229,0.1) 0%, transparent 60%), var(--bg);
+    justify-content: center;
+    align-items: flex-start;
+  }
+
+  .title-eyebrow {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--accent2);
+    margin-bottom: 24px;
+  }
+
+  .title-main {
+    font-size: clamp(48px, 7vw, 96px);
+    font-weight: 900;
+    letter-spacing: -0.04em;
+    line-height: 0.95;
+    color: var(--white);
+    margin-bottom: 32px;
+  }
+
+  .title-main .brand { color: var(--accent2); }
+
+  .title-sub {
+    font-size: clamp(16px, 2vw, 22px);
+    font-weight: 400;
+    color: var(--grey2);
+    max-width: 600px;
+    line-height: 1.6;
+    margin-bottom: 56px;
+  }
+
+  .title-meta {
+    display: flex;
+    gap: 40px;
+  }
+
+  .title-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .title-meta-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--grey3);
+  }
+
+  .title-meta-value {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--white);
+  }
+
+  /* ─── DPP SLIDE ─── */
+  .dpp-wrap {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    width: 100%;
+    max-width: 1000px;
+  }
+
+  .dpp-timeline {
+    background: var(--bg2);
+    border: 1px solid var(--grey4);
+    border-radius: 16px;
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .timeline-item {
+    display: flex;
+    gap: 16px;
+    padding-bottom: 20px;
+    position: relative;
+  }
+
+  .timeline-item:last-child { padding-bottom: 0; }
+
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 32px;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(to bottom, var(--accent-border), transparent);
+  }
+
+  .timeline-item:last-child::before { display: none; }
+
+  .timeline-dot {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent2);
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+  }
+
+  .timeline-content {
+    padding-top: 4px;
+  }
+
+  .timeline-year {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 2px;
+  }
+
+  .timeline-desc {
+    font-size: 13px;
+    color: var(--grey2);
+    line-height: 1.5;
+  }
+
+  .dpp-ugi-box {
+    background: linear-gradient(135deg, rgba(79,70,229,0.15), rgba(99,102,241,0.05));
+    border: 1px solid var(--accent-border);
+    border-radius: 16px;
+    padding: 36px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .dpp-headline {
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--white);
+    line-height: 1.2;
+  }
+
+  .dpp-headline .accent { color: var(--accent2); }
+
+  .dpp-body {
+    font-size: 14px;
+    color: var(--grey2);
+    line-height: 1.7;
+  }
+
+  /* ─── BUSINESS MODEL ─── */
+  .biz-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 20px;
+    width: 100%;
+    max-width: 1100px;
+    margin-bottom: 24px;
+  }
+
+  .biz-card {
+    background: var(--bg2);
+    border: 1px solid var(--grey4);
+    border-radius: 16px;
+    padding: 24px;
+  }
+
+  .biz-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--grey3);
+    margin-bottom: 6px;
+  }
+
+  .biz-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 12px;
+  }
+
+  .biz-items {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .biz-items li {
+    font-size: 12px;
+    color: var(--grey2);
+    padding-left: 14px;
+    position: relative;
+    line-height: 1.4;
+  }
+
+  .biz-items li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 7px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--accent2);
+  }
+
+  .arr-milestones {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    width: 100%;
+    max-width: 1100px;
+  }
+
+  .arr-mile {
+    background: var(--bg2);
+    border: 1px solid var(--grey4);
+    border-radius: 12px;
+    padding: 20px 24px;
+    text-align: center;
+  }
+
+  .arr-year {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: var(--accent2);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .arr-val {
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--white);
+    margin-bottom: 4px;
+  }
+
+  .arr-detail {
+    font-size: 12px;
+    color: var(--grey2);
+    line-height: 1.5;
+  }
+
+  /* ─── NAV ─── */
+  #counter {
+    position: fixed;
+    bottom: 28px;
+    right: 32px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: var(--grey3);
+    z-index: 100;
+  }
+
+  #progress {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width 0.4s cubic-bezier(0.4,0,0.2,1);
+    z-index: 100;
+  }
+
+  .nav-hint {
+    position: fixed;
+    bottom: 28px;
+    left: 32px;
+    font-size: 11px;
+    color: var(--grey4);
+    z-index: 100;
+    letter-spacing: 0.05em;
+  }
+
+  /* ─── FULLSCREEN BTN ─── */
+  #fullscreen-btn {
+    position: fixed;
+    bottom: 22px;
+    right: 90px;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--bg2);
+    border: 1px solid var(--grey4);
+    color: var(--grey2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+    z-index: 100;
+    transition: border-color 0.2s, color 0.2s;
+  }
+
+  #fullscreen-btn:hover { border-color: var(--accent-border); color: var(--white); }
+
+  /* ─── COMPARABLE EXITS ─── */
+  .comps {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    width: 100%;
+    max-width: 1000px;
+  }
+
+  .comp-card {
+    background: var(--bg2);
+    border: 1px solid var(--grey4);
+    border-radius: 12px;
+    padding: 18px 20px;
+    text-align: center;
+  }
+
+  .comp-company {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 6px;
+  }
+
+  .comp-val {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--accent2);
+    margin-bottom: 4px;
+  }
+
+  .comp-desc {
+    font-size: 11px;
+    color: var(--grey3);
+    line-height: 1.4;
+  }
+
+  /* SVG chart */
+  .chart-label {
+    fill: var(--grey2);
+    font-family: var(--font);
+    font-size: 12px;
+  }
+
+  .chart-value {
+    fill: var(--white);
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 900px) {
+    .slide { padding: 40px; }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .insight-split { grid-template-columns: 1fr; }
+    .dpp-wrap { grid-template-columns: 1fr; }
+    .flywheel-wrap { flex-direction: column; }
+    .biz-grid { grid-template-columns: 1fr; }
+    .comps { grid-template-columns: 1fr 1fr; }
+    .market-wrap { flex-direction: column; align-items: center; }
+  }
+
+  /* Counter animation */
+  @keyframes count-up {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<div id="deck">
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 1 — TITLE
+  ══════════════════════════════════════════ -->
+  <div class="slide active" id="slide-title">
+    <div class="title-eyebrow">Seed Round — Confidential</div>
+    <div class="title-main">
+      <span class="brand">Loocbooc.</span><br>
+    </div>
+    <div class="title-sub">
+      The operating system for the $2.5 trillion fashion industry.
+    </div>
+    <div class="title-meta">
+      <div class="title-meta-item">
+        <span class="title-meta-label">Stage</span>
+        <span class="title-meta-value">Pre-seed / Seed</span>
+      </div>
+      <div class="title-meta-item">
+        <span class="title-meta-label">Founder</span>
+        <span class="title-meta-value">Jason Li</span>
+      </div>
+      <div class="title-meta-item">
+        <span class="title-meta-label">Live revenue</span>
+        <span class="title-meta-value">$14.9M AUD (Charcoal)</span>
+      </div>
+      <div class="title-meta-item">
+        <span class="title-meta-label">Year</span>
+        <span class="title-meta-value">2026</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 2 — THE PROBLEM
+  ══════════════════════════════════════════ -->
+  <div class="slide" id="slide-problem">
+    <div class="slide-label">The Problem</div>
+    <div class="slide-title">The world's third-largest industry<br>runs on <span class="accent">PDFs and email.</span></div>
+    <div class="divider"></div>
+    <div class="problem-list">
+      <div class="problem-item">
+        <div class="problem-icon">📄</div>
+        <div class="problem-text"><strong>Tech packs are PDFs</strong> — emailed to a factory. When something changes, someone manually re-sends the file. Factories work off the wrong version.</div>
+      </div>
+      <div class="problem-item">
+        <div class="problem-icon">📁</div>
+        <div class="problem-text"><strong>Cut patterns live in desktop folders</strong> — AI or DXF files on someone's local machine, not connected to anything downstream.</div>
+      </div>
+      <div class="problem-item">
+        <div class="problem-icon">✈️</div>
+        <div class="problem-text"><strong>3D samples are physical garments shipped internationally</strong> — 4–6 weeks per iteration. Each correction restarts the clock. The waste is staggering.</div>
+      </div>
+      <div class="problem-item">
+        <div class="problem-icon">📦</div>
+        <div class="problem-text"><strong>Returns cost the industry $500B+ annually.</strong> 30% of all online fashion purchases are returned. Fit guesswork is the cause. It's a systemic problem with a structural solution.</div>
+      </div>
+      <div class="problem-item">
+        <div class="problem-icon">🏭</div>
+        <div class="problem-text"><strong>Fashion produces more waste than any industry except oil.</strong> Overproduction, unsold inventory, and mis-sized returns. None of it is inevitable.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 3 — THE INSIGHT
+  ══════════════════════════════════════════ -->
+  <div class="slide" id="slide-insight">
+    <div class="slide-label">The Insight</div>
+    <div class="slide-title">Every garment is defined by<br><span class="accent">two things.</span> Both already exist.</div>
+    <div class="divider"></div>
+    <div class="insight-split">
+      <div class="insight-box">
+        <div class="insight-icon">📐</div>
+        <div class="insight-title">Geometry</div>
+        <div class="insight-body">The cut pattern. Already exists as a digital file in every manufacturer's system. It defines every dimension, every seam, every curve of the garment.</div>
+      </div>
+      <div class="insight-plus">+</div>
+      <div class="insight-box">
+        <div class="insight-icon">🧵</div>
+        <div class="insight-title">Physics</div>
+        <div class="insight-body">The fabric composition. Legally required on every care label globally. Composition maps deterministically to drape, weight, stretch, and recovery.</div>
+      </div>
+      <div class="insight-result">
+        <div class="result-title">→ Mathematically perfect 3D garment. Before it's manufactured.</div>
+        <div class="result-body">No scanning. No expensive equipment. No sample shipping. The data already exists in every factory. We connect it.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 4 — THE SOLUTION
+  ══════════════════════════════════════════ -->
+  <div class="slide" id="slide-solution">
+    <div class="slide-label">The Solution</div>
+    <div class="slide-title">One file. One ID.<br><span class="accent">Every party connected.</span></div>
+    <div class="divider"></div>
+    <div style="width:100%;max-width:1000px;">
+      <div style="text-align:center;margin-bottom:20px;">
+        <div class="ugi-badge">
+          <small>Universal Garment Identifier</small>
+          UGI — 000000001
+        </div>
+      </div>
+      <div class="ugi-spokes">
+        <div class="ugi-spoke"><strong>Tech Pack</strong>Measurements, construction specs, grading rules</div>
+        <div class="ugi-spoke"><strong>Cut Patterns</strong>All pieces, all sizes, always current</div>
+        <div class="ugi-spoke"><strong>Fabric Physics</strong>Composition → simulation parameters auto-set</div>
+        <div class="ugi-spoke"><strong>3D Model</strong>Generated automatically. Updates on any change.</div>
+        <div class="ugi-spoke"><strong>Production Chain</strong>Factory, batch, sourcing, certifications</div>
+        <div class="ugi-spoke"><strong>Retail Data</strong>Price points, colorways, markets</div>
+        <div class="ugi-spoke"><strong>Consumer Data</strong>Try-on, fit feedback, size conversions</div>
+        <div class="ugi-spoke"><strong>Lifecycle</strong>Resale, repair, recycling, end-of-life</div>
+      </div>
+      <div style="margin-top:16px;text-align:center;">
+        <p style="font-size:14px;color:var(--grey2);">Designer → Manufacturer → Retailer → Consumer → Recycler. <span style="color:var(--white);font-weight:600;">One truth. Always live.</span></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 5 — THE PLATFORM
+  ══════════════════════════════════════════ -->
+  <div class="slide" id="slide-platform">
+    <div class="slide-label">The Platform</div>
+    <div class="slide-title">Built for every party<br>in the <span class="accent">supply chain.</span></div>
+    <div class="divider"></div>
+    <div class="grid-3" style="max-width:1100px;">
+      <div class="platform-col">
+        <div class="platform-col-head">
+          <div class="platform-icon">🏭</div>
+          <div class="platform-col-title">Brands & Manufacturers</div>
+        </div>
+        <ul class="platform-list">
+          <li>Upload patterns or photos → 3D model in minutes</li>
+          <li>Real-time global factory collaboration</li>
+          <li>CLO3D / Marvelous Designer / Gerber integration</li>
+          <li>DPP compliance built in</li>
+          <li>No tools to abandon — connects to existing workflows</li>
+        </ul>
+      </div>
+      <div class="platform-col">
+        <div class="platform-col-head">
+          <div class="platform-icon">🏬</div>
+          <div class="platform-col-title">Retailers</div>
+        </div>
+        <ul class="platform-list">
+          <li>Virtual try-on for every product</li>
+          <li>Fit prediction reduces returns at source</li>
+          <li>DPP compliance — automatic, no extra work</li>
+          <li>Live product data — no manual re-entry</li>
+          <li>Supply chain transparency</li>
+        </ul>
+      </div>
+      <div class="platform-col">
+        <div class="platform-col-head">
+          <div class="platform-icon">👤</div>
+          <div class="platform-col-title">Consumers</div>
+        </div>
+        <ul class="platform-list">
+          <li>Personal avatar — accurate body measurements</li>
+          <li>Physics-accurate virtual try-on</li>
+          <li>"Will this actually fit me?" — answered</li>
+          <li>Live 3D wardrobe of everything they own</li>
+          <li>Style intelligence based on real fit data</li>
+        </ul>
+      </div>
+    </div>
+    <div style="margin-top:20px;padding:16px 24px;background:var(--bg2);border:1px solid var(--grey4);border-radius:12px;max-width:1100px;width:100%;">
+      <p style="font-size:13px;color:var(--grey2);">Integrates with: <span style="color:var(--white);font-weight:600;">CLO3D · Marvelous Designer · Gerber AccuMark · Lectra Modaris · Browzwear · Centric PLM · Optitex · Tukatech</span> — and every major pattern format (AI, DXF, AAMA, HPGL)</p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 6 — EU DPP
+  ══════════════════════════════════════════ -->
+  <div class="slide" id="slide-dpp">
+    <div class="slide-label">The Forcing Function</div>
+    <div class="slide-title">The EU just made<br><span class="accent">Loocbooc mandatory.</span></div>
+    <div class="divider"></div>
+    <div class="dpp-wrap">
+      <div class="dpp-timeline">
+        <div class="timeline-item">
+          <div class="timeline-dot">1</div>
+          <div class="timeline-content">
+            <div class="timeline-year">2024 — Regulation passed</div>
+            <div class="timeline-desc">EU Digital Product Passport framework adopted. The clock starts.</div>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot">2</div>
+          <div class="timeline-content">
+            <div class="timeline-year">2027 — First wave</div>
+            <div class="timeline-desc">DPP mandatory for select textile categories. Material composition, origin, sustainability data required.</div>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot">3</div>
+          <div class="timeline-content">
+            <div class="timeline-year">2030 — Full textile coverage</div>
+            <div class="timeline-desc">Every garment sold in the EU must carry a digital record of composition, supply chain, and lifecycle.</div>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot">4</div>
+          <div class="timeline-content">
+            <div class="timeline-year">Global adoption follows</div>
+            <div class="timeline-desc">EU standards historically become global standards. Most major brands sell into Europe.</div>
+          </div>
+        </div>
+      </div>
+      <div class="dpp-ugi-box">
+        <div class="dpp-headline">Loocbooc's UGI<br><span class="accent">IS that passport.</span></div>
+        <div class="dpp-body">Every brand on Loocbooc is automatically DPP-compliant. Every brand not on Loocbooc has a legal problem heading toward them at speed.<br><br>They can build it themselves — at enormous cost — or they can use Loocbooc.<br><br><strong style="color:var(--white);">This is not a nice-to-have. It's a legal mandate with a hard deadline.</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 7 — GTM FLYWHEEL
+  ══════════════════════════════════════════ -->
+  <div class="slide" id="slide-gtm">
+    <div class="slide-label">Go-To-Market</div>
+    <div class="slide-title">We don't need to sell<br>to every manufacturer.</div>
+    <div class="divider"></div>
+    <div class="flywheel-wrap">
+      <div class="flywheel-steps">
+        <div class="fw-step">
+          <div class="fw-num">1</div>
+          <div class="fw-text"><strong>Major retailer mandates</strong> Loocbooc-format garment files for DPP compliance and virtual try-on.</div>
+        </div>
+        <div class="fw-step">
+          <div class="fw-num">2</div>
+          <div class="fw-text"><strong>Suppliers adopt Loocbooc</strong> to keep the retailer. No alternative — the retailer is the revenue.</div>
+        </div>
+        <div class="fw-step">
+          <div class="fw-num">3</div>
+          <div class="fw-text"><strong>Manufacturer sees efficiency gains immediately</strong> — real-time collaboration, fewer sample iterations, lower production costs.</div>
+        </div>
+        <div class="fw-step">
+          <div class="fw-num">4</div>
+          <div class="fw-text"><strong>Manufacturer uses Loocbooc for all brands</strong> — not just the retailer that mandated it. The platform becomes infrastructure.</div>
+        </div>
+        <div class="fw-step">
+          <div class="fw-num">5</div>
+          <div class="fw-text"><strong>More manufacturers → more brands join → more retailers require it.</strong> The flywheel is self-sustaining.</div>
+        </div>
+      </div>
+      <div style="flex:0 0 320px;">
+        <svg viewBox="0 0 300 300" width="300" height="300" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="4" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="#4F46E5" opacity="0.6"/>
+            </marker>
+          </defs>
+          <!-- Flywheel circle -->
+          <circle cx="150" cy="150" r="110" fill="none" stroke="#27272A" stroke-width="2"/>
+          <circle cx="150" cy="150" r="70" fill="rgba(79,70,229,0.08)" stroke="rgba(79,70,229,0.2)" stroke-width="1.5"/>
+          <text x="150" y="143" text-anchor="middle" fill="#6366F1" font-family="Inter,sans-serif" font-size="13" font-weight="700">RETAILER</text>
+          <text x="150" y="160" text-anchor="middle" fill="#6366F1" font-family="Inter,sans-serif" font-size="13" font-weight="700">MANDATE</text>
+          <!-- Outer labels -->
+          <text x="150" y="22" text-anchor="middle" fill="#A1A1AA" font-family="Inter,sans-serif" font-size="11">Brands Onboard</text>
+          <text x="278" y="155" text-anchor="middle" fill="#A1A1AA" font-family="Inter,sans-serif" font-size="11">Manufacturers</text>
+          <text x="150" y="288" text-anchor="middle" fill="#A1A1AA" font-family="Inter,sans-serif" font-size="11">Network Effect</text>
+          <text x="22" y="155" text-anchor="middle" fill="#A1A1AA" font-family="Inter,sans-serif" font-size="11">DPP Push</text>
+          <!-- Arrows around circle -->
+          <path d="M 180 42 A 110 110 0 0 1 252 108" stroke="#4F46E5" stroke-width="2" fill="none" opacity="0.5" marker-end="url(#arrowhead)"/>
+          <path d="M 254 192 A 110 110 0 0 1 188 258" stroke="#4F46E5" stroke-width="2" fill="none" opacity="0.5" marker-end="url(#arrowhead)"/>
+          <path d="M 112 258 A 110 110 0 0 1 46 192" stroke="#4F46E5" stroke-width="2" fill="none" opacity="0.5" marker-end="url(#arrowhead)"/>
+          <path d="M 48 108 A 110 110 0 0 1 120 42" stroke="#4F46E5" stroke-width="2" fill="none" opacity="0.5" marker-end="url(#arrowhead)"/>
+        </svg>
+      </div>
+    </div>
+    <div style="margin-top:8px;padding:14px 24px;background:var(--bg2);border:1px solid var(--accent-border);border-radius:12px;max-width:700px;width:100%;">
+      <p style="font-size:14px;color:var(--grey1);">The DPP is the wedge. <span style="color:var(--accent2);font-weight:600;">Once one major retailer mandates it, the rest of the supply chain follows.</span></p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 8 — THE DATA MOAT
+  ══════════════════════════════════════════ -->
+  <div class="slide" id="slide-moat">
+    <div class="slide-label">The Moat</div>
+    <div class="slide-title">Every garment makes the<br>next prediction <span class="accent">more accurate.</span></div>
+    <div class="divider"></div>
+    <table class="moat-table">
+      <thead>
+        <tr>
+          <th>Garments on platform</th>
+          <th>What Loocbooc has</th>
+          <th style="width:40%">Competitive position</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="moat-row">
+          <td>10,000</td>
+          <td>Good physics database</td>
+          <td>
+            <div class="moat-bar-wrap">
+              <div class="moat-bar-bg"><div class="moat-bar-fill" style="width:15%"></div></div>
+            </div>
+          </td>
+        </tr>
+        <tr class="moat-row">
+          <td>100,000</td>
+          <td>Best fit prediction in the world</td>
+          <td>
+            <div class="moat-bar-wrap">
+              <div class="moat-bar-bg"><div class="moat-bar-fill" style="width:40%"></div></div>
+            </div>
+          </td>
+        </tr>
+        <tr class="moat-row">
+          <td>1,000,000</td>
+          <td>Proprietary taste intelligence no competitor can replicate</td>
+          <td>
+            <div class="moat-bar-wrap">
+              <div class="moat-bar-bg"><div class="moat-bar-fill" style="width:72%"></div></div>
+            </div>
+          </td>
+        </tr>
+        <tr class="moat-row">
+          <td>10M+</td>
+          <td>Universal standard — brands can't leave</td>
+          <td>
+            <div class="moat-bar-wrap">
+              <div class="moat-bar-bg"><div class="moat-bar-fill" style="width:100%"></div></div>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="margin-top:24px;padding:16px 24px;background:var(--bg2);border:1px solid var(--grey4);border-radius:12px;max-width:900px;width:100%;">
+      <p style="font-size:14px;color:var(--grey2);">A competitor starting 2 years behind faces a data deficit they <strong style="color:var(--white);">cannot close.</strong> This is the moat — not code, not patents. Data and time.</p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 9 — THE MARKET
+  ══════════════════════════════════════════ -->
+  <div class="slide" id="slide-market">
+    <div class="slide-label">The Market</div>
+    <div class="slide-title">A <span class="accent">$2.5T industry</span><br>with no operating system.</div>
+    <div class="divider"></div>
+    <div class="market-wrap">
+      <div class="market-circle-wrap">
+        <div class="market-circle mc-tam">
+          <div class="mc-value">$2.5T</div>
+          <div class="mc-label">TAM</div>
+        </div>
+        <div class="mc-desc">Global fashion industry</div>
+      </div>
+      <div class="market-circle-wrap">
+        <div class="market-circle mc-sam">
+          <div class="mc-value">$8.9B</div>
+          <div class="mc-label">SAM</div>
+        </div>
+        <div class="mc-desc">Fashion software, PLM & digitisation — growing 12% p.a.</div>
+      </div>
+      <div class="market-circle-wrap">
+        <div class="market-circle mc-som">
+          <div class="mc-value">$1.3B</div>
+          <div class="mc-label">SOM</div>
+        </div>
+        <div class="mc-desc">15% of global brands + consumer platform, 5-year target</div>
+      </div>
+    </div>
+    <div class="comps">
+      <div class="comp-card">
+        <div class="comp-company">CLO3D</div>
+        <div class="comp-val">$119M</div>
+        <div class="comp-desc">Raised · 7,000+ brand clients · Loocbooc integrates with it</div>
+      </div>
+      <div class="comp-card">
+        <div class="comp-company">Browzwear</div>
+        <div class="comp-val">$35M</div>
+        <div class="comp-desc">Raised · enterprise 3D fashion · point solution only</div>
+      </div>
+      <div class="comp-card">
+        <div class="comp-company">Stitch Fix</div>
+        <div class="comp-val">$1.6B</div>
+        <div class="comp-desc">IPO valuation · algorithmic styling · no garment intelligence</div>
+      </div>
+      <div class="comp-card">
+        <div class="comp-company">Fashion for Good</div>
+        <div class="comp-val">$100M+</div>
+        <div class="comp-desc">Annual investment in fashion-tech ecosystem globally</div>
+      </div>
+    </div>
+    <div style="margin-top:16px;max-width:1000px;width:100%;">
+      <p style="font-size:13px;color:var(--grey2);">Loocbooc is the platform <strong style="color:var(--white);">all of these either feed into or are replaced by.</strong> We are the infrastructure layer, not a point solution.</p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 10 — TRACTION
+  ══════════════════════════════════════════ -->
+  <div class="slide" id="slide-traction">
+    <div class="slide-label">Traction</div>
+    <div class="slide-title">This is not a cold start.</div>
+    <div class="divider"></div>
+    <div class="traction-grid">
+      <div class="traction-card traction-big">
+        <div style="display:flex;align-items:flex-start;gap:40px;flex-wrap:wrap;">
+          <div>
+            <div class="traction-num">$14.9M <span class="accent">AUD</span></div>
+            <div class="traction-desc">Charcoal Clothing revenue FY2025<br>61% gross margin</div>
+          </div>
+          <div>
+            <div class="traction-num">9<span class="accent">×</span></div>
+            <div class="traction-desc">US revenue growth in 8 months<br>$12K/week → $110K/week</div>
+          </div>
+          <div>
+            <div class="traction-num">2016</div>
+            <div class="traction-desc">Founded · 6 retail stores · global supply chain</div>
+          </div>
+        </div>
+      </div>
+      <div class="traction-card">
+        <div class="card-label">First Client</div>
+        <div class="card-title">Charcoal Clothing</div>
+        <div class="card-body">Jason Li — Loocbooc founder — is CEO of Charcoal. The first client is the founder's own brand. Real revenue, real supply chain, real garment data to seed the platform.</div>
+      </div>
+      <div class="traction-card">
+        <div class="card-label">What This Means</div>
+        <div class="card-title">Day-one inventory</div>
+        <div class="card-body">Loocbooc launches with a live fashion brand dropping 90–110 styles per month. That's over 1,000 garments in year one from the first client alone — real production data from day one.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 11 — BUSINESS MODEL
+  ══════════════════════════════════════════ -->
+  <div class="slide" id="slide-model">
+    <div class="slide-label">Business Model</div>
+    <div class="slide-title">Three revenue layers.<br><span class="accent">Each compounds the next.</span></div>
+    <div class="divider"></div>
+    <div class="biz-grid">
+      <div class="biz-card">
+        <div class="biz-label">Primary</div>
+        <div class="biz-title">B2B SaaS</div>
+        <ul class="biz-items">
+          <li>Brands: per garment digitised (tiered volume pricing)</li>
+          <li>Manufacturers: platform access + per-integration fee</li>
+          <li>Retailers: enterprise license + DPP compliance module</li>
+        </ul>
+      </div>
+      <div class="biz-card">
+        <div class="biz-label">Secondary</div>
+        <div class="biz-title">Consumer</div>
+        <ul class="biz-items">
+          <li>Premium avatar subscription</li>
+          <li>Marketplace commission on try-on-to-purchase conversions</li>
+          <li>Wardrobe and styling intelligence</li>
+        </ul>
+      </div>
+      <div class="biz-card">
+        <div class="biz-label">Long-term</div>
+        <div class="biz-title">Data Licensing</div>
+        <ul class="biz-items">
+          <li>Anonymous aggregated taste intelligence</li>
+          <li>Material science database licensing</li>
+          <li>Fit prediction API for third-party apps</li>
+        </ul>
+      </div>
+    </div>
+    <div class="arr-milestones">
+      <div class="arr-mile">
+        <div class="arr-year">Year 1</div>
+        <div class="arr-val">$500K</div>
+        <div class="arr-detail">ARR · 50 brands · 100,000 garments digitised</div>
+      </div>
+      <div class="arr-mile">
+        <div class="arr-year">Year 3</div>
+        <div class="arr-val">$10M</div>
+        <div class="arr-detail">ARR · 500 brands · 5M garments on platform</div>
+      </div>
+      <div class="arr-mile">
+        <div class="arr-year">Year 5</div>
+        <div class="arr-val">$100M+</div>
+        <div class="arr-detail">ARR · Platform scale + marketplace + data licensing</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 12 — THE TEAM
+  ══════════════════════════════════════════ -->
+  <div class="slide" id="slide-team">
+    <div class="slide-label">The Team</div>
+    <div class="slide-title">Founder-market fit.<br><span class="accent">Built from the inside.</span></div>
+    <div class="divider"></div>
+    <div class="grid-2" style="max-width:1040px;">
+      <div class="team-card">
+        <div class="team-name">Jason Li</div>
+        <div class="team-role">Founder & CEO</div>
+        <ul class="team-bullets">
+          <li>Founded Charcoal Clothing in 2016 — from $0 to $14.9M AUD revenue</li>
+          <li>Built US market from scratch to $110K/week in 8 months (9x growth)</li>
+          <li>Creative Director + Marketing lead — understands fashion from the ground up</li>
+          <li>Direct operator in the supply chain Loocbooc is digitising — not an outsider observing it</li>
+          <li>First-principles thinker with pattern recognition across fashion, tech, and consumer behaviour</li>
+        </ul>
+      </div>
+      <div class="recruiting-card">
+        <div class="team-name" style="color:var(--grey3);">Technical Co-Founder</div>
+        <div class="team-role" style="color:var(--grey3);">CTO — Recruiting Now</div>
+        <div class="recruiting-body" style="margin-top:12px;">Target profile: Senior engineering leader from THE ICONIC, Afterpay, or Canva engineering.<br><br>The right person has already built at scale in a high-growth Australian tech company. They know what production infrastructure looks like. They've solved the hard problems before.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 13 — THE ASK
+  ══════════════════════════════════════════ -->
+  <div class="slide" id="slide-ask">
+    <div class="slide-label">The Ask</div>
+    <div class="slide-title">The window is open.<br><span class="accent">The clock is the DPP.</span></div>
+    <div class="divider"></div>
+    <div class="ask-grid">
+      <div class="ask-card primary">
+        <div class="ask-label">Raising</div>
+        <div class="ask-value">Seed Round</div>
+        <div class="ask-desc">12 months to operational MVP · 50 brands onboarded · first retailer mandate signed · $150M valuation target at Series A</div>
+      </div>
+      <div class="ask-card">
+        <div class="ask-label">Use of Funds</div>
+        <div class="ask-value" style="font-size:22px;margin-bottom:16px;">Deployed to momentum</div>
+        <div class="funds-row">
+          <div class="fund-item">
+            <span class="fund-name">Engineering team (CTO + 3 engineers)</span>
+            <div class="fund-bar-bg"><div class="fund-bar-fill" style="width:60%"></div></div>
+            <span class="fund-pct">60%</span>
+          </div>
+          <div class="fund-item">
+            <span class="fund-name">Platform infrastructure</span>
+            <div class="fund-bar-bg"><div class="fund-bar-fill" style="width:20%"></div></div>
+            <span class="fund-pct">20%</span>
+          </div>
+          <div class="fund-item">
+            <span class="fund-name">Sales & partnerships (3 retailers)</span>
+            <div class="fund-bar-bg"><div class="fund-bar-fill" style="width:15%"></div></div>
+            <span class="fund-pct">15%</span>
+          </div>
+          <div class="fund-item">
+            <span class="fund-name">Legal / IP / compliance</span>
+            <div class="fund-bar-bg"><div class="fund-bar-fill" style="width:5%"></div></div>
+            <span class="fund-pct">5%</span>
+          </div>
+        </div>
+      </div>
+      <div class="ask-card">
+        <div class="ask-label">What we're offering</div>
+        <div class="ask-value" style="font-size:22px;margin-bottom:12px;">Early position in the platform the $2.5T fashion industry runs on</div>
+        <div class="ask-desc">The DPP mandate is a hard deadline driving a global supply chain toward a single solution. The brand that becomes that solution first wins permanently. That brand is Loocbooc.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 14 — VISION
+  ══════════════════════════════════════════ -->
+  <div class="slide" id="slide-vision">
+    <div class="vision-quote">
+      In 5 years, every garment manufactured<br>anywhere in the world has a <span class="accent">Loocbooc UGI.</span><br>
+      <span class="dim">Every try-on. Every fit prediction. Every piece of taste data.<br>All of it flows through Loocbooc.</span>
+    </div>
+    <div class="vision-stats">
+      <div class="vision-stat">
+        <div class="vision-stat-num">$2.5T</div>
+        <div class="vision-stat-label">Industry we become the infrastructure for</div>
+      </div>
+      <div class="vision-stat">
+        <div class="vision-stat-num">30%+</div>
+        <div class="vision-stat-label">Reduction in measurable fashion waste</div>
+      </div>
+      <div class="vision-stat">
+        <div class="vision-stat-num">100M+</div>
+        <div class="vision-stat-label">Consumers with a Loocbooc avatar</div>
+      </div>
+      <div class="vision-stat">
+        <div class="vision-stat-num">∞</div>
+        <div class="vision-stat-label">Data compound — irreplaceable, insurmountable</div>
+      </div>
+    </div>
+    <div style="margin-top:48px;padding:20px 32px;background:rgba(79,70,229,0.1);border:1px solid rgba(79,70,229,0.3);border-radius:14px;max-width:720px;text-align:center;">
+      <p style="font-size:16px;color:var(--grey1);line-height:1.6;">The data compound is irreplaceable. The network effect is insurmountable. <strong style="color:var(--white);">The category is won.</strong><br>We are building it now, while the window is open.</p>
+    </div>
+  </div>
+
+</div><!-- /deck -->
+
+<!-- ─── UI CHROME ─── -->
+<div id="counter">1 / 14</div>
+<div id="progress" style="width: 7.14%"></div>
+<div class="nav-hint">← → to navigate · F for fullscreen</div>
+<button id="fullscreen-btn" title="Fullscreen (F)">⛶</button>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  let current = 0;
+  let transitioning = false;
+
+  function goTo(n, direction) {
+    if (transitioning) return;
+    if (n < 0 || n >= slides.length) return;
+    if (n === current) return;
+
+    transitioning = true;
+    const prev = slides[current];
+    const next = slides[n];
+
+    prev.classList.add('exit-up');
+    prev.classList.remove('active');
+
+    setTimeout(() => {
+      prev.classList.remove('exit-up');
+    }, 400);
+
+    next.style.transform = 'translateY(20px)';
+    next.style.opacity = '0';
+    next.classList.add('active');
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        next.style.transform = '';
+        next.style.opacity = '';
+      });
+    });
+
+    current = n;
+    updateChrome();
+
+    setTimeout(() => { transitioning = false; }, 550);
+  }
+
+  function updateChrome() {
+    document.getElementById('counter').textContent = (current + 1) + ' / ' + slides.length;
+    document.getElementById('progress').style.width = ((current + 1) / slides.length * 100) + '%';
+  }
+
+  // ── Keyboard ──
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+      e.preventDefault();
+      goTo(current + 1, 1);
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      goTo(current - 1, -1);
+    } else if (e.key === 'f' || e.key === 'F') {
+      toggleFS();
+    }
+  });
+
+  // ── Click ──
+  document.getElementById('deck').addEventListener('click', (e) => {
+    if (e.target.closest('#fullscreen-btn')) return;
+    const x = e.clientX;
+    if (x < window.innerWidth / 4) {
+      goTo(current - 1, -1);
+    } else {
+      goTo(current + 1, 1);
+    }
+  });
+
+  // ── Fullscreen ──
+  function toggleFS() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen();
+    }
+  }
+  document.getElementById('fullscreen-btn').addEventListener('click', toggleFS);
+
+  // ── Touch swipe ──
+  let touchStartX = 0;
+  document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; }, { passive: true });
+  document.addEventListener('touchend', (e) => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 50) {
+      if (dx < 0) goTo(current + 1, 1);
+      else goTo(current - 1, -1);
+    }
+  }, { passive: true });
+
+  // ── Animate moat bars on slide enter ──
+  function animateMoatBars() {
+    document.querySelectorAll('.moat-bar-fill').forEach(bar => {
+      const target = bar.style.width;
+      bar.style.width = '0';
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          bar.style.width = target;
+        });
+      });
+    });
+  }
+
+  // Observer to trigger bar animations
+  const moatSlide = document.getElementById('slide-moat');
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach(m => {
+      if (m.target === moatSlide && moatSlide.classList.contains('active')) {
+        animateMoatBars();
+      }
+    });
+  });
+  observer.observe(moatSlide, { attributes: true, attributeFilter: ['class'] });
+</script>
+</body>
+</html>
