@@ -126,6 +126,12 @@ export default function BrandLayout({ children }: { children: React.ReactNode })
         { href: "/manufacturers/connections", label: "My Connections", icon: "🤝" },
       ],
     },
+    {
+      label: "Settings",
+      items: [
+        { href: "/size-charts", label: "Size Charts", icon: "📐" },
+      ],
+    },
   ];
 
   return (

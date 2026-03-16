@@ -466,6 +466,14 @@ export async function createSizeChart(input: CreateSizeChartInput): Promise<Stor
   };
 }
 
+export async function deleteSizeChart(chartId: string): Promise<void> {
+  const existing = await prisma.sizeChart.findUnique({ where: { id: chartId } });
+  if (!existing) {
+    throw new ServiceError("SIZE_CHART_NOT_FOUND", "Size chart not found.", 404);
+  }
+  await prisma.sizeChart.delete({ where: { id: chartId } });
+}
+
 export async function getBrandSizeCharts(brandId: string): Promise<StoredSizeChart[]> {
   const charts = await prisma.sizeChart.findMany({
     where: { brandId },

@@ -28,6 +28,7 @@ import {
   deleteAvatar,
   getFitRecommendation,
   createSizeChart,
+  deleteSizeChart,
   getBrandSizeCharts,
   recordTasteSignal,
   getAvatarTasteProfile,
@@ -228,6 +229,26 @@ export async function sizeChartRoutes(app: FastifyInstance): Promise<void> {
     } catch (err) {
       reply.log.error(err);
       return reply.code(500).send({ error: { code: "INTERNAL_ERROR", message: "Failed to fetch size charts." } });
+    }
+  });
+
+  // Delete size chart — brand only
+  app.delete("/:chartId", {
+    preHandler: [requireAuth],
+  }, async (request: FastifyRequest<{ Params: { chartId: string } }>, reply: FastifyReply) => {
+    try {
+      const role = request.user?.role;
+      if (role !== "brand_owner" && role !== "brand_member" && role !== "admin") {
+        return reply.code(403).send({ error: { code: "FORBIDDEN", message: "Brand access required." } });
+      }
+      await deleteSizeChart(request.params.chartId);
+      return reply.code(204).send();
+    } catch (err) {
+      if (err instanceof ServiceError) {
+        return reply.code(err.statusCode).send({ error: { code: err.code, message: err.message } });
+      }
+      reply.log.error(err);
+      return reply.code(500).send({ error: { code: "INTERNAL_ERROR", message: "Failed to delete size chart." } });
     }
   });
 }
