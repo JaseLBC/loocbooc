@@ -5,6 +5,7 @@ import { TryOnViewer } from './components/TryOnViewer';
 import { AvatarCreator } from './components/AvatarCreator';
 import { MerchantDashboard } from './components/MerchantDashboard';
 import { DemoPage } from './pages/Demo';
+import { PitchPage } from './pages/Pitch';
 
 // Simple hash router
 function App() {
@@ -24,6 +25,10 @@ function App() {
   
   if (route === '#/dashboard' || route === '#dashboard') {
     return <MerchantDashboard shop="charcoal-clothing.myshopify.com" apiBaseUrl="http://localhost:3000/api" />;
+  }
+  
+  if (route === '#/pitch' || route === '#pitch') {
+    return <PitchPage />;
   }
 
   // Default: Developer preview
@@ -169,6 +174,7 @@ function DeveloperPreview() {
         <nav style={styles.nav}>
           <a style={styles.navLink} href="#/">Developer</a>
           <a style={styles.navLink} href="#/demo">Store Demo</a>
+          <a style={styles.navLink} href="#/pitch">Pitch Deck</a>
           <a style={styles.navLink} href="#/dashboard">Dashboard</a>
         </nav>
       </header>
