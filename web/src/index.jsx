@@ -7,6 +7,11 @@ export { TryOnViewer } from './components/TryOnViewer';
 export { TryOnModal } from './components/TryOnModal';
 export { AvatarCreator } from './components/AvatarCreator';
 export { ComparisonView } from './components/ComparisonView';
+export { ParametricBody } from './components/ParametricBody';
+export { GarmentOverlay } from './components/GarmentOverlay';
+export { SizeQuiz } from './components/SizeQuiz';
+export { SizeComparison } from './components/SizeComparison';
+export { MerchantDashboard } from './components/MerchantDashboard';
 
 // Shopify theme integration helper
 export function initLoocbooc(config = {}) {
