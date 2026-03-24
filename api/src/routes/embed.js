@@ -1,17 +1,14 @@
 /**
  * Embed Routes
- * Serves the try-on experience embedded in merchant storefronts
+ * - Serves embedded try-on interface for Shopify storefronts
  */
-
-import { supabase } from '../services/supabase.js';
 
 export default async function embedRoutes(fastify) {
   
-  // Serve embedded try-on page
+  // Embedded try-on page (loaded in iframe)
   fastify.get('/embed/tryon', async (request, reply) => {
     const { product, shop } = request.query;
     
-    // Generate the embedded try-on HTML
     const html = `
 <!DOCTYPE html>
 <html lang="en">
@@ -25,25 +22,30 @@ export default async function embedRoutes(fastify) {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       background: #f5f5f5;
       min-height: 100vh;
+      display: flex;
+      flex-direction: column;
     }
     .container {
       max-width: 800px;
       margin: 0 auto;
-      padding: 20px;
+      padding: 24px;
+      flex: 1;
     }
     .header {
       text-align: center;
       margin-bottom: 24px;
     }
+    .logo {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: #8b7355;
+    }
     .title {
-      font-size: 20px;
+      font-size: 24px;
       font-weight: 700;
       color: #3d3129;
-      margin-bottom: 8px;
-    }
-    .subtitle {
-      font-size: 14px;
-      color: #6b5d4d;
+      margin-top: 8px;
     }
     .viewer {
       background: #fff;
@@ -54,183 +56,297 @@ export default async function embedRoutes(fastify) {
       justify-content: center;
       margin-bottom: 24px;
       position: relative;
+      overflow: hidden;
     }
     .viewer-placeholder {
       color: #8b7355;
       text-align: center;
     }
-    .controls {
-      display: flex;
-      gap: 12px;
-      justify-content: center;
-      flex-wrap: wrap;
+    .viewer-placeholder svg {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 16px;
+      opacity: 0.5;
     }
-    .size-btn {
-      padding: 12px 24px;
-      border: 1px solid #d9d5ce;
-      background: #fff;
-      color: #3d3129;
-      font-size: 14px;
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .label {
+      display: block;
+      font-size: 12px;
       font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #6b5d4d;
+      margin-bottom: 6px;
     }
-    .size-btn:hover, .size-btn.active {
+    .input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #d9d5ce;
+      font-size: 16px;
+      font-family: inherit;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .button {
+      width: 100%;
+      padding: 16px;
       background: #3d3129;
-      color: #fff;
-      border-color: #3d3129;
-    }
-    .cta {
-      margin-top: 24px;
-      text-align: center;
-    }
-    .cta-btn {
-      padding: 16px 48px;
-      background: #3d3129;
-      color: #fff;
+      color: #e5e0d8;
       border: none;
       font-size: 14px;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 1px;
       cursor: pointer;
+      margin-top: 8px;
     }
-    .avatar-prompt {
+    .button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .fit-card {
       background: #fff;
-      padding: 32px;
-      text-align: center;
+      padding: 20px;
       border-radius: 8px;
+      margin-top: 24px;
     }
-    .avatar-prompt h2 {
-      font-size: 18px;
-      margin-bottom: 12px;
+    .fit-title {
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
       color: #3d3129;
     }
-    .avatar-prompt p {
-      font-size: 14px;
-      color: #6b5d4d;
-      margin-bottom: 24px;
+    .fit-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-top: 1px solid #e5e0d8;
     }
-    .branding {
+    .fit-score {
+      display: inline-block;
+      width: 60px;
+      height: 6px;
+      background: #e5e0d8;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    .fit-bar {
+      height: 100%;
+      background: #4a6b4a;
+      border-radius: 3px;
+    }
+    .recommendation {
+      margin-top: 16px;
+      padding: 12px;
+      background: #e5e0d8;
+    }
+    .footer {
       text-align: center;
-      margin-top: 24px;
+      padding: 16px;
       font-size: 12px;
       color: #8b7355;
     }
-    .branding a {
-      color: #3d3129;
-      text-decoration: none;
-      font-weight: 600;
+    .loading {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+    .loading.active {
+      display: block;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #e5e0d8;
+      border-top-color: #3d3129;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <div class="title">Virtual Try-On</div>
-      <div class="subtitle">See how it looks on you</div>
+      <div class="logo">LOOCBOOC</div>
+      <h1 class="title">Virtual Try-On</h1>
     </div>
     
-    <div id="app">
-      <!-- Avatar creation or try-on view will render here -->
-      <div class="avatar-prompt">
-        <h2>Create Your Avatar</h2>
-        <p>Enter your measurements to see how this garment fits your body.</p>
-        <button class="cta-btn" onclick="showMeasurements()">Enter Measurements</button>
+    <div class="viewer" id="viewer">
+      <div class="viewer-placeholder" id="placeholder">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+        <p>Enter your measurements to see how this looks on you</p>
+      </div>
+      <div class="loading" id="loading">
+        <div class="spinner"></div>
       </div>
     </div>
     
-    <div class="branding">
-      Powered by <a href="https://loocbooc.com" target="_blank">Loocbooc</a>
+    <form id="form">
+      <div class="row">
+        <div class="form-group">
+          <label class="label">Height (cm) *</label>
+          <input type="number" class="input" name="height" placeholder="165" required>
+        </div>
+        <div class="form-group">
+          <label class="label">Weight (kg)</label>
+          <input type="number" class="input" name="weight" placeholder="60">
+        </div>
+      </div>
+      <div class="row">
+        <div class="form-group">
+          <label class="label">Bust (cm) *</label>
+          <input type="number" class="input" name="bust" placeholder="90" required>
+        </div>
+        <div class="form-group">
+          <label class="label">Waist (cm) *</label>
+          <input type="number" class="input" name="waist" placeholder="70" required>
+        </div>
+      </div>
+      <div class="row">
+        <div class="form-group">
+          <label class="label">Hips (cm) *</label>
+          <input type="number" class="input" name="hips" placeholder="95" required>
+        </div>
+        <div class="form-group">
+          <label class="label">Size to try</label>
+          <select class="input" name="size">
+            <option value="XS">XS</option>
+            <option value="S">S</option>
+            <option value="M" selected>M</option>
+            <option value="L">L</option>
+            <option value="XL">XL</option>
+          </select>
+        </div>
+      </div>
+      <button type="submit" class="button" id="submit">Try It On</button>
+    </form>
+    
+    <div class="fit-card" id="fitCard" style="display: none;">
+      <div class="fit-title">Fit Analysis</div>
+      <div id="fitResults"></div>
+      <div class="recommendation" id="recommendation"></div>
     </div>
   </div>
   
+  <div class="footer">
+    Powered by <strong>Loocbooc</strong> — Your avatar works everywhere
+  </div>
+  
   <script>
-    const PRODUCT_ID = '${product || ''}';
-    const SHOP = '${shop || ''}';
-    const API_BASE = '${process.env.SHOPIFY_APP_URL || 'https://api.loocbooc.com'}';
+    const API_BASE = window.location.origin;
+    const productId = '${product || ''}';
+    const shopDomain = '${shop || ''}';
     
-    // Check for existing avatar in localStorage
-    const savedAvatar = localStorage.getItem('loocbooc_avatar');
-    
-    if (savedAvatar) {
-      showTryOn(JSON.parse(savedAvatar));
-    }
-    
-    function showMeasurements() {
-      document.getElementById('app').innerHTML = \`
-        <div style="background: #fff; padding: 24px; border-radius: 8px;">
-          <h2 style="font-size: 18px; margin-bottom: 20px; color: #3d3129;">Your Measurements</h2>
-          <form id="measurements-form">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-              <div>
-                <label style="display: block; font-size: 12px; font-weight: 600; color: #6b5d4d; margin-bottom: 6px;">HEIGHT (CM)</label>
-                <input type="number" name="height" placeholder="165" required style="width: 100%; padding: 12px; border: 1px solid #d9d5ce; font-size: 16px;">
-              </div>
-              <div>
-                <label style="display: block; font-size: 12px; font-weight: 600; color: #6b5d4d; margin-bottom: 6px;">BUST (CM)</label>
-                <input type="number" name="bust" placeholder="90" required style="width: 100%; padding: 12px; border: 1px solid #d9d5ce; font-size: 16px;">
-              </div>
-              <div>
-                <label style="display: block; font-size: 12px; font-weight: 600; color: #6b5d4d; margin-bottom: 6px;">WAIST (CM)</label>
-                <input type="number" name="waist" placeholder="70" required style="width: 100%; padding: 12px; border: 1px solid #d9d5ce; font-size: 16px;">
-              </div>
-              <div>
-                <label style="display: block; font-size: 12px; font-weight: 600; color: #6b5d4d; margin-bottom: 6px;">HIPS (CM)</label>
-                <input type="number" name="hips" placeholder="95" required style="width: 100%; padding: 12px; border: 1px solid #d9d5ce; font-size: 16px;">
-              </div>
-            </div>
-            <button type="submit" class="cta-btn" style="width: 100%; margin-top: 24px;">Create Avatar</button>
-          </form>
-        </div>
-      \`;
+    document.getElementById('form').addEventListener('submit', async (e) => {
+      e.preventDefault();
       
-      document.getElementById('measurements-form').onsubmit = async (e) => {
-        e.preventDefault();
-        const form = new FormData(e.target);
-        const measurements = {
-          height: parseInt(form.get('height')),
-          bust: parseInt(form.get('bust')),
-          waist: parseInt(form.get('waist')),
-          hips: parseInt(form.get('hips'))
-        };
-        
-        localStorage.setItem('loocbooc_avatar', JSON.stringify({ measurements }));
-        showTryOn({ measurements });
+      const form = e.target;
+      const data = {
+        height: parseFloat(form.height.value),
+        weight: parseFloat(form.weight.value) || null,
+        bust: parseFloat(form.bust.value),
+        waist: parseFloat(form.waist.value),
+        hips: parseFloat(form.hips.value)
       };
-    }
+      const size = form.size.value;
+      
+      // Show loading
+      document.getElementById('loading').classList.add('active');
+      document.getElementById('placeholder').style.display = 'none';
+      document.getElementById('submit').disabled = true;
+      
+      try {
+        // Create avatar
+        const avatarRes = await fetch(API_BASE + '/api/avatar/measurements', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        const avatarData = await avatarRes.json();
+        
+        // Generate try-on
+        const tryonRes = await fetch(API_BASE + '/api/tryon/render', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            avatarId: avatarData.avatar?.id,
+            size
+          })
+        });
+        const tryonData = await tryonRes.json();
+        
+        // Show fit analysis
+        if (tryonData.render?.fitAnalysis) {
+          showFitAnalysis(tryonData.render.fitAnalysis);
+        }
+        
+        // Update viewer placeholder with success message
+        document.getElementById('placeholder').innerHTML = \`
+          <svg viewBox="0 0 24 24" fill="none" stroke="#4a6b4a" stroke-width="1.5" style="width: 60px; height: 60px;">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+          <p style="color: #4a6b4a; font-weight: 600;">Avatar created!</p>
+          <p style="margin-top: 8px; font-size: 13px;">3D viewer coming soon</p>
+        \`;
+        document.getElementById('placeholder').style.display = 'block';
+        
+      } catch (err) {
+        console.error('Error:', err);
+        alert('Something went wrong. Please try again.');
+      } finally {
+        document.getElementById('loading').classList.remove('active');
+        document.getElementById('submit').disabled = false;
+      }
+    });
     
-    function showTryOn(avatar) {
-      document.getElementById('app').innerHTML = \`
-        <div class="viewer">
-          <div class="viewer-placeholder">
-            <div style="font-size: 48px; margin-bottom: 16px;">👗</div>
-            <div>3D Try-On Viewer</div>
-            <div style="font-size: 12px; margin-top: 8px;">Height: \${avatar.measurements.height}cm | Bust: \${avatar.measurements.bust}cm</div>
+    function showFitAnalysis(analysis) {
+      const fitCard = document.getElementById('fitCard');
+      const fitResults = document.getElementById('fitResults');
+      const recommendation = document.getElementById('recommendation');
+      
+      let resultsHtml = '';
+      for (const [area, data] of Object.entries(analysis.areas)) {
+        const areaName = area.charAt(0).toUpperCase() + area.slice(1);
+        const barWidth = (data.score * 100) + '%';
+        const barColor = data.score >= 0.8 ? '#4a6b4a' : data.score >= 0.6 ? '#8b7355' : '#8b4444';
+        resultsHtml += \`
+          <div class="fit-row">
+            <span>\${areaName}</span>
+            <span>
+              <span class="fit-score"><span class="fit-bar" style="width: \${barWidth}; background: \${barColor}"></span></span>
+              \${data.description}
+            </span>
           </div>
-        </div>
-        <div class="controls">
-          <button class="size-btn" onclick="selectSize('XS')">XS</button>
-          <button class="size-btn" onclick="selectSize('S')">S</button>
-          <button class="size-btn active" onclick="selectSize('M')">M</button>
-          <button class="size-btn" onclick="selectSize('L')">L</button>
-          <button class="size-btn" onclick="selectSize('XL')">XL</button>
-        </div>
-        <div class="cta">
-          <button class="cta-btn" onclick="addToCart()">Add to Cart</button>
-        </div>
-      \`;
-    }
-    
-    function selectSize(size) {
-      document.querySelectorAll('.size-btn').forEach(btn => btn.classList.remove('active'));
-      event.target.classList.add('active');
-      console.log('Selected size:', size);
-    }
-    
-    function addToCart() {
-      // Post message to parent window to add to cart
-      window.parent.postMessage({ type: 'loocbooc:add-to-cart', productId: PRODUCT_ID }, '*');
+        \`;
+      }
+      fitResults.innerHTML = resultsHtml;
+      
+      if (analysis.recommendation) {
+        recommendation.innerHTML = \`
+          <strong>Recommended: \${analysis.recommendation.size}</strong><br>
+          \${analysis.recommendation.message}
+        \`;
+      }
+      
+      fitCard.style.display = 'block';
     }
   </script>
 </body>
@@ -240,60 +356,61 @@ export default async function embedRoutes(fastify) {
     reply.type('text/html').send(html);
   });
   
-  // Serve embed CSS
-  fastify.get('/embed.css', async (request, reply) => {
-    const css = `
-      .loocbooc-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.7);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 999999;
-      }
-      .loocbooc-modal {
-        background: #fff;
-        width: 90%;
-        max-width: 900px;
-        max-height: 90vh;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-      }
-      .loocbooc-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 16px 20px;
-        border-bottom: 1px solid #e5e0d8;
-      }
-      .loocbooc-title {
-        font-size: 16px;
-        font-weight: 600;
-        color: #3d3129;
-      }
-      .loocbooc-close {
-        background: none;
-        border: none;
-        font-size: 24px;
-        cursor: pointer;
-        color: #6b5d4d;
-      }
-      .loocbooc-body {
-        flex: 1;
-        overflow: hidden;
-      }
-      .loocbooc-iframe {
-        width: 100%;
-        height: 600px;
-        border: none;
-      }
+  // Embed script for storefronts
+  fastify.get('/embed/loocbooc.js', async (request, reply) => {
+    const js = `
+(function() {
+  'use strict';
+  
+  const LOOCBOOC_API = '${process.env.LOOCBOOC_API_URL || 'https://api.loocbooc.com'}';
+  
+  function init() {
+    console.log('🚀 Loocbooc embed loaded');
+    
+    document.querySelectorAll('[data-loocbooc-tryon]').forEach(button => {
+      button.addEventListener('click', function(e) {
+        e.preventDefault();
+        const productId = this.dataset.productId;
+        openModal(productId);
+      });
+    });
+  }
+  
+  function openModal(productId) {
+    const overlay = document.createElement('div');
+    overlay.id = 'loocbooc-overlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:10000;display:flex;align-items:center;justify-content:center';
+    overlay.onclick = function(e) { if (e.target === overlay) closeModal(); };
+    
+    const modal = document.createElement('div');
+    modal.style.cssText = 'background:#fff;width:90%;max-width:800px;max-height:90vh;overflow:auto;position:relative';
+    
+    const iframe = document.createElement('iframe');
+    iframe.src = LOOCBOOC_API + '/embed/tryon?product=' + productId + '&shop=' + (window.Shopify?.shop || '');
+    iframe.style.cssText = 'width:100%;height:80vh;border:none';
+    
+    modal.appendChild(iframe);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    document.body.style.overflow = 'hidden';
+  }
+  
+  function closeModal() {
+    const overlay = document.getElementById('loocbooc-overlay');
+    if (overlay) overlay.remove();
+    document.body.style.overflow = '';
+  }
+  
+  window.Loocbooc = { init, openModal, closeModal };
+  
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
     `;
     
-    reply.type('text/css').send(css);
+    reply.type('application/javascript').send(js);
   });
 }
