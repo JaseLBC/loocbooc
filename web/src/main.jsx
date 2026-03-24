@@ -6,6 +6,7 @@ import { AvatarCreator } from './components/AvatarCreator';
 import { MerchantDashboard } from './components/MerchantDashboard';
 import { DemoPage } from './pages/Demo';
 import { PitchPage } from './pages/Pitch';
+import { AdminDashboard } from './pages/AdminDashboard';
 
 // Simple hash router
 function App() {
@@ -24,7 +25,7 @@ function App() {
   }
   
   if (route === '#/dashboard' || route === '#dashboard') {
-    return <MerchantDashboard shop="charcoal-clothing.myshopify.com" apiBaseUrl="http://localhost:3000/api" />;
+    return <AdminDashboard shop="charcoal-clothing.myshopify.com" />;
   }
   
   if (route === '#/pitch' || route === '#pitch') {
