@@ -7,6 +7,7 @@
 import { supabase, isConfigured } from '../services/supabase.js';
 import { memoryStore } from '../services/memory-store.js';
 import { renderTryOn } from '../services/tryon-renderer.js';
+import { getBestSize, recommendSizes } from '../services/size-engine.js';
 
 const useMemory = !isConfigured;
 
@@ -159,48 +160,70 @@ export default async function tryonRoutes(fastify) {
   // Get fit recommendation
   fastify.get('/fit/:avatarId/:garmentId', async (request, reply) => {
     const { avatarId, garmentId } = request.params;
+    const { region = 'AU' } = request.query;
+    
+    let avatar, garment;
     
     if (useMemory) {
-      // Return demo fit recommendation
+      avatar = await memoryStore.getAvatarByUserId(avatarId);
+      garment = await memoryStore.getGarment(garmentId);
+      
+      // Use demo measurements if not found
+      const measurements = avatar?.measurements || { bust: 90, waist: 70, hips: 95 };
+      const sizeChart = garment?.size_chart || null;
+      
+      const recommendation = getBestSize(measurements, sizeChart, region);
+      
       return {
-        fit: {
-          recommendedSize: 'M',
-          confidence: 0.85,
-          notes: [
-            'Based on your measurements, M will provide a comfortable fit',
-            'If you prefer a tighter fit, consider size S'
-          ]
-        }
+        fit: recommendation,
+        allSizes: recommendSizes(measurements, sizeChart, region)
       };
     }
     
     // Fetch avatar measurements
-    const { data: avatar } = await supabase
+    const { data: avatarData } = await supabase
       .from('avatars')
       .select('measurements, body_type')
       .eq('id', avatarId)
       .single();
     
     // Fetch garment size chart
-    const { data: garment } = await supabase
+    const { data: garmentData } = await supabase
       .from('garments')
       .select('variants, size_chart')
       .eq('id', garmentId)
       .single();
     
-    if (!avatar || !garment) {
+    if (!avatarData || !garmentData) {
       return reply.status(404).send({ error: 'Avatar or garment not found' });
     }
     
-    const fitRecommendation = {
-      recommendedSize: 'M',
-      confidence: 0.85,
-      notes: [
-        'Based on your bust measurement, M will provide a relaxed fit',
-        'If you prefer a tighter fit, consider size S'
-      ]
-    };
+    const recommendation = getBestSize(
+      avatarData.measurements, 
+      garmentData.size_chart,
+      region
+    );
     
-    return { fit: fitRecommendation };
+    return { 
+      fit: recommendation,
+      allSizes: recommendSizes(avatarData.measurements, garmentData.size_chart, region)
+    };
+  });
+  
+  // Quick size check (no auth required, just measurements)
+  fastify.post('/size-check', async (request, reply) => {
+    const { bust, waist, hips, sizeChart, region = 'AU' } = request.body;
+    
+    if (!bust || !waist || !hips) {
+      return reply.status(400).send({ error: 'bust, waist, and hips measurements required' });
+    }
+    
+    const measurements = { bust, waist, hips };
+    const recommendation = getBestSize(measurements, sizeChart, region);
+    
+    return {
+      recommended: recommendation,
+      allSizes: recommendSizes(measurements, sizeChart, region)
+    };
   });
 }
