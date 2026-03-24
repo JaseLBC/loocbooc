@@ -9,6 +9,9 @@ import { TryOnViewer } from '../components/TryOnViewer';
 export function PitchPage() {
   const [roiData, setRoiData] = useState(null);
   const [activeSection, setActiveSection] = useState('hero');
+  const [email, setEmail] = useState('');
+  const [userType, setUserType] = useState('brand');
+  const [waitlistStatus, setWaitlistStatus] = useState(null);
 
   useEffect(() => {
     // Fetch example ROI calculation
@@ -393,14 +396,81 @@ export function PitchPage() {
         </div>
       </section>
 
-      {/* CTA */}
+      {/* CTA / Waitlist */}
       <section style={styles.cta}>
-        <h2 style={{ ...styles.sectionTitle, marginBottom: '24px' }}>
-          Ready to see it in action?
+        <h2 style={{ ...styles.sectionTitle, marginBottom: '16px' }}>
+          Get Early Access
         </h2>
-        <button style={styles.ctaButton} onClick={() => window.location.hash = '#/demo'}>
-          Try the Demo
-        </button>
+        <p style={{ fontSize: '18px', color: '#6b5d4d', marginBottom: '32px' }}>
+          Be among the first to transform your online experience.
+        </p>
+        
+        {waitlistStatus ? (
+          <div style={{ fontSize: '20px', color: '#4a6b4a' }}>
+            ✓ {waitlistStatus}
+          </div>
+        ) : (
+          <form 
+            onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                const res = await fetch('/api/waitlist/join', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ email, type: userType })
+                });
+                const data = await res.json();
+                setWaitlistStatus(data.message);
+              } catch (err) {
+                console.error(err);
+              }
+            }}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}
+          >
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <select
+                value={userType}
+                onChange={(e) => setUserType(e.target.value)}
+                style={{
+                  padding: '16px 20px',
+                  border: '1px solid #d9d5ce',
+                  fontSize: '16px',
+                  background: '#fff'
+                }}
+              >
+                <option value="brand">I'm a Brand</option>
+                <option value="customer">I'm a Shopper</option>
+                <option value="investor">I'm an Investor</option>
+                <option value="cto">I'm a CTO</option>
+              </select>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email"
+                required
+                style={{
+                  padding: '16px 20px',
+                  border: '1px solid #d9d5ce',
+                  fontSize: '16px',
+                  width: '300px'
+                }}
+              />
+              <button type="submit" style={styles.ctaButton}>
+                Join Waitlist
+              </button>
+            </div>
+          </form>
+        )}
+        
+        <div style={{ marginTop: '32px' }}>
+          <button 
+            style={{ ...styles.ctaButton, background: 'transparent', color: '#3d3129', border: '1px solid #d9d5ce' }}
+            onClick={() => window.location.hash = '#/demo'}
+          >
+            Or Try the Demo Now
+          </button>
+        </div>
       </section>
     </div>
   );

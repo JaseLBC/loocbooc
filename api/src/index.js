@@ -12,6 +12,7 @@ import embedRoutes from './routes/embed.js';
 import analyticsRoutes from './routes/analytics.js';
 import webhookRoutes from './routes/webhooks.js';
 import merchantRoutes from './routes/merchant.js';
+import waitlistRoutes from './routes/waitlist.js';
 
 const fastify = Fastify({
   logger: true
@@ -40,6 +41,7 @@ fastify.register(tryonRoutes, { prefix: '/api/tryon' });
 fastify.register(analyticsRoutes, { prefix: '/api/analytics' });
 fastify.register(webhookRoutes, { prefix: '/webhooks' });
 fastify.register(merchantRoutes, { prefix: '/api/merchant' });
+fastify.register(waitlistRoutes, { prefix: '/api/waitlist' });
 fastify.register(embedRoutes); // Embed routes at root for /embed/* paths
 
 // Start server

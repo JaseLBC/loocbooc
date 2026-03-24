@@ -199,3 +199,21 @@ CREATE TRIGGER update_avatars_updated_at BEFORE UPDATE ON avatars
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER update_garments_updated_at BEFORE UPDATE ON garments
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- ============================================
+-- WAITLIST (Early interest capture)
+-- ============================================
+CREATE TABLE waitlist (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    type VARCHAR(50) DEFAULT 'customer', -- brand, customer, investor, cto
+    company VARCHAR(255),
+    monthly_orders INTEGER,
+    source VARCHAR(100),
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_waitlist_email ON waitlist(email);
+CREATE INDEX idx_waitlist_type ON waitlist(type);
+CREATE INDEX idx_waitlist_created ON waitlist(created_at);
