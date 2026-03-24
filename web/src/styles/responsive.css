@@ -1,0 +1,150 @@
+/* Loocbooc Responsive Styles */
+
+/* Mobile-first breakpoints */
+@media (max-width: 768px) {
+  /* Pitch page */
+  .pitch-headline {
+    font-size: 36px !important;
+  }
+  
+  .pitch-stat-grid {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+  }
+  
+  .pitch-grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .pitch-comparison-grid {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .pitch-feature-grid-4 {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  
+  /* Demo page */
+  .demo-grid {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .demo-gallery {
+    flex-direction: column !important;
+  }
+  
+  .demo-thumbs {
+    flex-direction: row !important;
+    order: 2;
+  }
+  
+  .demo-main-image {
+    order: 1;
+  }
+  
+  /* Try-on modal */
+  .tryon-modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    margin: 0 !important;
+  }
+  
+  .tryon-viewer {
+    height: 300px !important;
+  }
+  
+  .tryon-comparison-split {
+    grid-template-columns: 1fr !important;
+  }
+  
+  /* Avatar creator */
+  .avatar-creator-tabs {
+    flex-wrap: wrap !important;
+  }
+  
+  .avatar-creator-tab {
+    flex: 1 1 auto !important;
+  }
+  
+  /* Size quiz */
+  .size-quiz-option {
+    padding: 12px 16px !important;
+  }
+  
+  /* Forms */
+  .form-row {
+    grid-template-columns: 1fr !important;
+  }
+  
+  /* CTA buttons */
+  .cta-form {
+    flex-direction: column !important;
+  }
+  
+  .cta-form input,
+  .cta-form select,
+  .cta-form button {
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Extra small screens */
+  .pitch-headline {
+    font-size: 28px !important;
+  }
+  
+  .pitch-feature-grid-4 {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .pitch-stat-value {
+    font-size: 36px !important;
+  }
+  
+  .section-title {
+    font-size: 28px !important;
+  }
+  
+  /* Compact padding */
+  .section {
+    padding: 40px 20px !important;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .loocbooc-modal {
+    background: #1a1a1a;
+    color: #fff;
+  }
+  
+  .loocbooc-modal input,
+  .loocbooc-modal select {
+    background: #2a2a2a;
+    border-color: #3a3a3a;
+    color: #fff;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .tryon-viewer canvas {
+    animation: none !important;
+  }
+  
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  .tryon-modal,
+  .loocbooc-overlay {
+    display: none !important;
+  }
+}
