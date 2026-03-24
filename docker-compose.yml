@@ -1,15 +1,16 @@
-version: '3.8'
-
 # ================================================================
-# Loocbooc MVP — Full Stack Docker Compose
+# Loocbooc — Full Stack Docker Compose
 # ================================================================
-# Services: postgres, redis, minio, minio-init, api, web, pipeline-worker
+# TypeScript Monorepo: apps/api (Fastify), apps/web (Next.js),
+# apps/worker (BullMQ)
+#
+# Services: postgres, redis, minio, api, web, worker
 #
 # Usage:
 #   docker-compose up            # Start all services
 #   docker-compose up --build    # Rebuild and start
-#   docker-compose exec api python /app/scripts/seed.py  # Re-run seed
 #   docker-compose logs -f api   # Follow API logs
+#   docker-compose exec api sh   # Shell into API container
 # ================================================================
 
 services:
@@ -20,7 +21,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: loocbooc
-      POSTGRES_PASSWORD: loocbooc
+      POSTGRES_PASSWORD: loocbooc_dev_password
       POSTGRES_DB: loocbooc
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -83,38 +84,61 @@ services:
       "
     restart: "no"
 
-  # ── FastAPI Backend ──────────────────────────────────────────
-  api:
+  # ── Prisma Migrate (run migrations before API starts) ────────
+  migrate:
     build:
-      context: ./packages/api
-      dockerfile: Dockerfile
-    restart: unless-stopped
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: builder
     command: >
       sh -c "
-        echo 'Running migrations...' &&
-        alembic upgrade head &&
-        echo 'Running seed...' &&
-        python /app/scripts/seed.py ||
-        echo 'Seed skipped (already seeded or error, continuing)' &&
-        echo 'Starting API server...' &&
-        uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
+        cd packages/database &&
+        npx prisma migrate deploy &&
+        echo 'Migrations complete.'
       "
     environment:
-      DATABASE_URL: postgresql+asyncpg://loocbooc:loocbooc@postgres:5432/loocbooc
-      REDIS_URL: redis://redis:6379/0
-      STORAGE_BACKEND: minio
-      MINIO_ENDPOINT: http://minio:9000
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
-      MINIO_BUCKET: loocbooc-dev
-      SECRET_KEY: dev-secret-change-in-production-32-chars-minimum
-      JWT_SECRET: dev-secret-change-in-production
-      ENVIRONMENT: development
-      DEBUG: "true"
-      API_KEY_PREFIX: lb_live_
+      DATABASE_URL: postgresql://loocbooc:loocbooc_dev_password@postgres:5432/loocbooc
     depends_on:
       postgres:
         condition: service_healthy
+    restart: "no"
+
+  # ── Fastify API Server ───────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      # Database
+      DATABASE_URL: postgresql://loocbooc:loocbooc_dev_password@postgres:5432/loocbooc
+      # Redis (BullMQ queues + cache)
+      REDIS_URL: redis://redis:6379/0
+      # Supabase (Auth) — replace with real values for production
+      SUPABASE_URL: ${SUPABASE_URL:-https://your-project.supabase.co}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-your-anon-key}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-your-service-role-key}
+      # Stripe
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-sk_test_placeholder}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-whsec_placeholder}
+      # Shopify
+      SHOPIFY_API_KEY: ${SHOPIFY_API_KEY:-placeholder}
+      SHOPIFY_API_SECRET: ${SHOPIFY_API_SECRET:-placeholder}
+      # S3 / MinIO
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin
+      S3_BUCKET: loocbooc-dev
+      S3_REGION: us-east-1
+      # General
+      NODE_ENV: development
+      PORT: 8000
+      API_URL: http://localhost:8000
+      WEB_URL: http://localhost:3000
+      INTERNAL_SERVICE_SECRET: dev-internal-secret-change-in-production
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
       minio-init:
@@ -122,7 +146,7 @@ services:
     ports:
       - "8000:8000"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8000/health"]
       interval: 15s
       timeout: 10s
       retries: 5
@@ -131,12 +155,15 @@ services:
   # ── Next.js Frontend ─────────────────────────────────────────
   web:
     build:
-      context: ./packages/web
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/web/Dockerfile
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8000
       NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL:-https://your-project.supabase.co}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-your-anon-key}
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-pk_test_placeholder}
       NODE_ENV: development
     depends_on:
       api:
@@ -144,32 +171,47 @@ services:
     ports:
       - "3000:3000"
 
-  # ── Celery Pipeline Worker ───────────────────────────────────
-  pipeline-worker:
+  # ── BullMQ Worker ────────────────────────────────────────────
+  worker:
     build:
-      context: ./packages/pipeline
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/worker/Dockerfile
     restart: unless-stopped
     environment:
+      # Database
+      DATABASE_URL: postgresql://loocbooc:loocbooc_dev_password@postgres:5432/loocbooc
+      # Redis (BullMQ queues)
       REDIS_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/0
-      API_BASE_URL: http://api:8000
-      PIPELINE_API_KEY: lb_live_testkey_charcoal
-      STORAGE_BACKEND: minio
-      MINIO_ENDPOINT: http://minio:9000
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
-      MINIO_BUCKET: loocbooc-dev
-      PYTHONUNBUFFERED: "1"
+      # Stripe (for payment captures)
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-sk_test_placeholder}
+      # Resend (email notifications)
+      RESEND_API_KEY: ${RESEND_API_KEY:-re_placeholder}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-noreply@loocbooc.com}
+      # Shopify (for order sync)
+      SHOPIFY_API_KEY: ${SHOPIFY_API_KEY:-placeholder}
+      SHOPIFY_API_SECRET: ${SHOPIFY_API_SECRET:-placeholder}
+      # General
+      NODE_ENV: development
+      API_URL: http://api:8000
+      WEB_URL: http://localhost:3000
     depends_on:
-      redis:
-        condition: service_healthy
       api:
         condition: service_healthy
-    volumes:
-      - pipeline_tmp:/tmp/loocbooc_pipeline
+      redis:
+        condition: service_healthy
+    # Worker has no HTTP port — monitors BullMQ queues
 
 volumes:
   postgres_data:
   minio_data:
-  pipeline_tmp:
+
+# ================================================================
+# Quick Reference
+# ================================================================
+# Start:           docker-compose up
+# Start + rebuild: docker-compose up --build
+# Stop:            docker-compose down
+# Logs:            docker-compose logs -f api
+# Shell:           docker-compose exec api sh
+# Prisma Studio:   docker-compose exec api npx prisma studio
+# ================================================================

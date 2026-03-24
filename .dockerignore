@@ -1,0 +1,52 @@
+# ================================================================
+# Docker Ignore — Exclude from build context
+# ================================================================
+
+# Dependencies — installed fresh in container
+node_modules
+**/node_modules
+
+# Build outputs — recreated in container
+dist
+**/dist
+.next
+**/.next
+.turbo
+**/.turbo
+
+# Local environment
+.env
+.env.local
+.env.*.local
+*.local
+
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+coverage
+**/*.test.ts
+**/*.spec.ts
+__tests__
+
+# Documentation
+docs
+*.md
+!README.md
+
+# Misc
+*.log
+*.tgz
+.npmrc

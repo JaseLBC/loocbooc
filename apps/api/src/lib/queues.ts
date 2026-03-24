@@ -5,7 +5,15 @@
  */
 
 import { Queue } from "bullmq";
-import { redis } from "./redis";
+
+// Use connection string directly instead of Redis instance to avoid ioredis version mismatch
+const REDIS_URL = process.env["REDIS_URL"] ?? "redis://localhost:6379";
+
+const connectionOptions = {
+  url: REDIS_URL,
+  maxRetriesPerRequest: null as null, // Required by BullMQ
+  enableReadyCheck: false,
+};
 
 const defaultJobOptions = {
   attempts: 3,
@@ -25,25 +33,25 @@ const defaultJobOptions = {
 // MOQ threshold check — runs on every successful backing payment
 // Also triggered by the scheduled safety-net cron job
 export const moqThresholdQueue = new Queue("moq-threshold", {
-  connection: redis,
+  connection: connectionOptions,
   defaultJobOptions,
 });
 
 // Shopify data sync — process Shopify webhook payloads async
 export const shopifySyncQueue = new Queue("shopify-sync", {
-  connection: redis,
+  connection: connectionOptions,
   defaultJobOptions,
 });
 
 // Email notifications — all transactional emails via Resend
 export const emailNotificationQueue = new Queue("email-notification", {
-  connection: redis,
+  connection: connectionOptions,
   defaultJobOptions,
 });
 
 // Capture remaining payments when MOQ is reached (for deposit_percent < 100)
 export const captureRemainingPaymentsQueue = new Queue("capture-remaining-payments", {
-  connection: redis,
+  connection: connectionOptions,
   defaultJobOptions: {
     ...defaultJobOptions,
     attempts: 5,  // More retries for payment capture
@@ -54,11 +62,25 @@ export const captureRemainingPaymentsQueue = new Queue("capture-remaining-paymen
 // Jobs are deduplicated per-user: if a job for that user is already pending/delayed,
 // adding another has no effect (BullMQ deduplication via jobId)
 export const tasteEngineQueue = new Queue("taste-engine", {
-  connection: redis,
+  connection: connectionOptions,
   defaultJobOptions: {
     ...defaultJobOptions,
     // Delay processing by 5 minutes — batches rapid signal bursts into one run
     delay: 5 * 60 * 1000,
+  },
+});
+
+// Notification — in-app notifications for consumers
+// Lower retry count than payments (notifications are not critical path)
+export const notificationQueue = new Queue("notification", {
+  connection: connectionOptions,
+  defaultJobOptions: {
+    ...defaultJobOptions,
+    attempts: 2,
+    backoff: {
+      type: "exponential" as const,
+      delay: 1000,
+    },
   },
 });
 
@@ -102,7 +124,8 @@ export type QueueName =
   | "shopify-sync"
   | "email-notification"
   | "capture-remaining-payments"
-  | "taste-engine";
+  | "taste-engine"
+  | "notification";
 
 export async function enqueueJob(
   queue: QueueName,
@@ -116,6 +139,7 @@ export async function enqueueJob(
     "email-notification": emailNotificationQueue,
     "capture-remaining-payments": captureRemainingPaymentsQueue,
     "taste-engine": tasteEngineQueue,
+    "notification": notificationQueue,
   };
 
   const targetQueue = queueMap[queue];
@@ -124,4 +148,35 @@ export async function enqueueJob(
   }
 
   await targetQueue.add(jobName, data, opts);
+}
+
+// ─────────────────────────────────────────────
+// Notification Queue Helpers
+// ─────────────────────────────────────────────
+
+/**
+ * Enqueue an in-app notification for a user.
+ * Wraps the notification queue with type-safe job data.
+ */
+export type NotificationJobType =
+  | "backing.confirmed"
+  | "backing.moq-progress"
+  | "backing.moq-reached"
+  | "backing.funded"
+  | "backing.shipped"
+  | "backing.delivered"
+  | "backing.refunded"
+  | "brief.stylist-assigned"
+  | "brief.lookbook-ready"
+  | "order.confirmed"
+  | "order.shipped"
+  | "campaign.match"
+  | "user.welcome"
+  | "avatar.created";
+
+export async function enqueueNotification(
+  type: NotificationJobType,
+  data: Record<string, unknown>,
+): Promise<void> {
+  await notificationQueue.add(type, { type, ...data });
 }

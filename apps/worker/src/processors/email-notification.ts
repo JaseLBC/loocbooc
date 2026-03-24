@@ -8,12 +8,14 @@
  * - campaign-expired-emails       → Notify backers of expiry + refund
  * - campaign-cancelled-refunds    → Notify backers of brand cancellation
  * - process-backing-refund        → Notify a single backer of refund
+ * - dispute-alert                 → Immediately alert admin of Stripe chargeback
+ * - final-payment-failed          → Notify backer their remaining payment failed
  */
 
-import { Worker } from "bullmq";
+import { Worker, type ConnectionOptions } from "bullmq";
 import { Resend } from "resend";
 import { redis } from "../lib/redis";
-import { prisma } from "../../../../packages/database/src/client";
+import { prisma } from "@loocbooc/database";
 
 const resend = new Resend(process.env["RESEND_API_KEY"] ?? "");
 const EMAIL_FROM = process.env["EMAIL_FROM"] ?? "noreply@loocbooc.com";
@@ -25,6 +27,17 @@ interface EmailJobData {
   userId?: string;
   manufacturerId?: string;
   reason?: string;
+  // Dispute-specific fields
+  disputeId?: string;
+  chargeId?: string;
+  amount?: number;
+  currency?: string;
+  evidenceDueBy?: number;
+  backerEmail?: string;
+  backerName?: string;
+  campaignTitle?: string;
+  // Final payment failed
+  failureReason?: string;
 }
 
 export const emailNotificationWorker = new Worker(
@@ -56,6 +69,12 @@ export const emailNotificationWorker = new Worker(
       case "sample-shipped":
         await sendSampleShippedEmails(data.campaignId ?? "");
         break;
+      case "dispute-alert":
+        await sendDisputeAlert(data);
+        break;
+      case "final-payment-failed":
+        await sendFinalPaymentFailedEmail(data.backingId ?? "", data.failureReason);
+        break;
       default:
         job.log(`Unhandled email job type: ${jobName}`);
     }
@@ -63,7 +82,7 @@ export const emailNotificationWorker = new Worker(
     return { sent: true, jobName };
   },
   {
-    connection: redis,
+    connection: redis as unknown as ConnectionOptions,
     concurrency: 3, // Don't hammer Resend
     limiter: {
       max: 50,
@@ -161,7 +180,7 @@ async function sendMoqReachedEmails(campaignId: string): Promise<void> {
       })
     : null;
 
-  // Fetch all active backers
+  // Fetch all active backers with user relation
   const backings = await prisma.backing.findMany({
     where: { campaignId, status: "active" },
     include: { user: { select: { email: true, fullName: true } } },
@@ -445,6 +464,159 @@ async function sendSampleShippedEmails(campaignId: string): Promise<void> {
       await new Promise((resolve) => setTimeout(resolve, 200));
     }
   }
+}
+
+/**
+ * Send an immediate dispute (chargeback) alert to the Loocbooc admin team.
+ * Stripe gives 7 days to submit evidence. This email needs to land NOW.
+ */
+async function sendDisputeAlert(data: EmailJobData): Promise<void> {
+  const adminEmail = process.env["ADMIN_ALERT_EMAIL"] ?? process.env["EMAIL_FROM"] ?? "support@loocbooc.com";
+
+  if (!data.disputeId) return;
+
+  const evidenceDueDate = data.evidenceDueBy
+    ? new Date(data.evidenceDueBy * 1000).toLocaleDateString("en-AU", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZoneName: "short",
+      })
+    : "Unknown — check Stripe dashboard immediately";
+
+  const disputeAmountStr = data.amount != null
+    ? `${(data.amount / 100).toFixed(2)} ${(data.currency ?? "AUD").toUpperCase()}`
+    : "Amount unknown";
+
+  await resend.emails.send({
+    from: EMAIL_FROM,
+    to: adminEmail,
+    subject: `🚨 CHARGEBACK: ${data.campaignTitle ?? "Unknown campaign"} — Evidence due ${evidenceDueDate}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #1a1a1a; max-width: 600px; margin: 0 auto; padding: 32px 24px;">
+
+        <div style="background: #fef2f2; border: 2px solid #ef4444; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+          <h1 style="font-size: 20px; font-weight: 700; color: #dc2626; margin: 0 0 8px;">🚨 Chargeback Filed</h1>
+          <p style="margin: 0; font-size: 15px; color: #dc2626; font-weight: 600;">
+            Evidence deadline: ${evidenceDueDate}
+          </p>
+        </div>
+
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+          <tr>
+            <td style="padding: 8px 0; border-bottom: 1px solid #eee; color: #666; font-size: 14px; width: 160px;">Dispute ID</td>
+            <td style="padding: 8px 0; border-bottom: 1px solid #eee; font-size: 14px; font-family: monospace;">${data.disputeId}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; border-bottom: 1px solid #eee; color: #666; font-size: 14px;">Charge ID</td>
+            <td style="padding: 8px 0; border-bottom: 1px solid #eee; font-size: 14px; font-family: monospace;">${data.chargeId ?? "Unknown"}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; border-bottom: 1px solid #eee; color: #666; font-size: 14px;">Backing ID</td>
+            <td style="padding: 8px 0; border-bottom: 1px solid #eee; font-size: 14px; font-family: monospace;">${data.backingId ?? "Unknown"}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; border-bottom: 1px solid #eee; color: #666; font-size: 14px;">Campaign</td>
+            <td style="padding: 8px 0; border-bottom: 1px solid #eee; font-size: 14px;">${data.campaignTitle ?? "Unknown"}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; border-bottom: 1px solid #eee; color: #666; font-size: 14px;">Backer</td>
+            <td style="padding: 8px 0; border-bottom: 1px solid #eee; font-size: 14px;">${data.backerName ?? "Unknown"} &lt;${data.backerEmail ?? "unknown"}&gt;</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; border-bottom: 1px solid #eee; color: #666; font-size: 14px;">Amount</td>
+            <td style="padding: 8px 0; border-bottom: 1px solid #eee; font-size: 14px; font-weight: 600;">${disputeAmountStr}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #666; font-size: 14px;">Reason</td>
+            <td style="padding: 8px 0; font-size: 14px;">${data.reason ?? "Unknown"}</td>
+          </tr>
+        </table>
+
+        <div style="background: #fefce8; border: 1px solid #fcd34d; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+          <h3 style="font-size: 14px; font-weight: 700; margin: 0 0 8px;">What to do RIGHT NOW</h3>
+          <ol style="margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.8;">
+            <li>Log in to <a href="https://dashboard.stripe.com/disputes" style="color: #0070f3;">Stripe Dashboard → Disputes</a></li>
+            <li>Click the dispute for charge <strong>${data.chargeId ?? "listed above"}</strong></li>
+            <li>Upload evidence: campaign confirmation email, backing record, terms of service, fulfilment timeline</li>
+            <li>Submit before the deadline: <strong>${evidenceDueDate}</strong></li>
+          </ol>
+        </div>
+
+        <p style="font-size: 12px; color: #999; margin: 0;">
+          This alert was auto-generated by Loocbooc when Stripe fired a <code>charge.dispute.created</code> event.
+          Dispute ID: ${data.disputeId}
+        </p>
+      </body>
+      </html>
+    `,
+  });
+}
+
+/**
+ * Notify a backer that their remaining payment (after MOQ, deposit model) has failed.
+ * Gives them a clear path to update their payment method.
+ */
+async function sendFinalPaymentFailedEmail(backingId: string, failureReason?: string): Promise<void> {
+  const backing = await prisma.backing.findUnique({
+    where: { id: backingId },
+    include: {
+      campaign: { select: { title: true, slug: true } },
+      user: { select: { email: true, fullName: true } },
+    },
+  });
+  if (!backing?.user.email) return;
+
+  const amountStr = `${(backing.remainingCents / 100).toFixed(2)} ${backing.currency}`;
+
+  await resend.emails.send({
+    from: EMAIL_FROM,
+    to: backing.user.email,
+    subject: `Action needed: payment for ${backing.campaign.title} failed`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #1a1a1a; max-width: 560px; margin: 0 auto; padding: 32px 24px;">
+        <h1 style="font-size: 22px; font-weight: 700; margin: 0 0 8px;">Payment update needed</h1>
+
+        <p style="font-size: 15px; line-height: 1.6; margin: 0 0 24px;">
+          Hi ${backing.user.fullName ?? "there"},
+        </p>
+
+        <p style="font-size: 15px; line-height: 1.6; margin: 0 0 16px;">
+          Your final payment of <strong>${amountStr}</strong> for <strong>${backing.campaign.title}</strong>
+          couldn't be processed.${failureReason ? ` Reason: ${failureReason}.` : ""}
+        </p>
+
+        <p style="font-size: 15px; line-height: 1.6; margin: 0 0 24px;">
+          You have <strong>7 days</strong> to update your payment method before your backing is cancelled.
+          Your initial deposit will be refunded in full if the backing is cancelled.
+        </p>
+
+        <div style="text-align: center; margin: 32px 0;">
+          <a href="${process.env["WEB_APP_URL"] ?? "https://loocbooc.com"}/back/${backing.campaign.slug}"
+             style="background: #1a1a1a; color: #fff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 15px; font-weight: 600;">
+            Update Payment Method
+          </a>
+        </div>
+
+        <p style="font-size: 14px; color: #666; line-height: 1.6; margin: 0 0 32px;">
+          If you have questions, reply to this email and we'll help you sort it out.
+        </p>
+
+        <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0 16px;" />
+        <p style="font-size: 12px; color: #999; margin: 0;">
+          Loocbooc · Backing ID: ${backingId}
+        </p>
+      </body>
+      </html>
+    `,
+  });
 }
 
 emailNotificationWorker.on("failed", (job, err) => {

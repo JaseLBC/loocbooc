@@ -1,0 +1,99 @@
+{% comment %}
+  Loocbooc Try-On Button
+  Add this block to product pages to enable virtual try-on
+{% endcomment %}
+
+<div class="loocbooc-tryon-container" data-product-id="{{ product.id }}">
+  <button 
+    class="loocbooc-tryon-button"
+    data-loocbooc-tryon
+    data-product-id="{{ product.id }}"
+    data-product-title="{{ product.title | escape }}"
+    data-product-images='{{ product.images | map: "src" | json }}'
+    data-product-variants='{{ product.variants | json | escape }}'
+  >
+    <svg class="loocbooc-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+      <circle cx="12" cy="7" r="4"></circle>
+    </svg>
+    <span>{{ block.settings.button_text }}</span>
+  </button>
+  
+  <p class="loocbooc-subtitle">{{ block.settings.subtitle_text }}</p>
+</div>
+
+<style>
+  .loocbooc-tryon-container {
+    margin: 16px 0;
+  }
+  
+  .loocbooc-tryon-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 28px;
+    background: {{ block.settings.button_bg_color }};
+    color: {{ block.settings.button_text_color }};
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    font-family: inherit;
+  }
+  
+  .loocbooc-tryon-button:hover {
+    opacity: 0.9;
+  }
+  
+  .loocbooc-icon {
+    flex-shrink: 0;
+  }
+  
+  .loocbooc-subtitle {
+    margin-top: 8px;
+    font-size: 12px;
+    color: {{ block.settings.subtitle_color }};
+  }
+</style>
+
+{% schema %}
+{
+  "name": "Loocbooc Try-On",
+  "target": "section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "button_text",
+      "label": "Button Text",
+      "default": "Try On Your Avatar"
+    },
+    {
+      "type": "text",
+      "id": "subtitle_text",
+      "label": "Subtitle Text",
+      "default": "See how it looks on you"
+    },
+    {
+      "type": "color",
+      "id": "button_bg_color",
+      "label": "Button Background",
+      "default": "#3d3129"
+    },
+    {
+      "type": "color",
+      "id": "button_text_color",
+      "label": "Button Text Color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "subtitle_color",
+      "label": "Subtitle Color",
+      "default": "#6b5d4d"
+    }
+  ]
+}
+{% endschema %}

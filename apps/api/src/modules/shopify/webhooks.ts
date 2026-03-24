@@ -26,6 +26,9 @@ declare module "fastify" {
   interface FastifyRequest {
     rawBody?: Buffer;
   }
+  interface FastifyContextConfig {
+    rawBody?: boolean;
+  }
 }
 
 interface ShopifyOrderPayload {
@@ -124,11 +127,15 @@ export async function registerShopifyWebhookRoutes(
         rawBody: true,
       },
     },
-    async (request: FastifyRequest, reply: FastifyReply) => {
-      const hmacHeader = request.headers["x-shopify-hmac-sha256"] ?? "";
-      const topic = request.headers["x-shopify-topic"] ?? "";
-      const shopDomain = request.headers["x-shopify-shop-domain"] ?? "";
-      const webhookId = request.headers["x-shopify-webhook-id"] ?? "";
+    async (request: FastifyRequest<{ Params: { shopId: string } }>, reply: FastifyReply) => {
+      const getHeader = (name: string): string => {
+        const v = request.headers[name];
+        return Array.isArray(v) ? v[0] ?? "" : v ?? "";
+      };
+      const hmacHeader = getHeader("x-shopify-hmac-sha256");
+      const topic = getHeader("x-shopify-topic");
+      const shopDomain = getHeader("x-shopify-shop-domain");
+      const webhookId = getHeader("x-shopify-webhook-id");
       const rawBody = request.rawBody;
 
       // -----------------------------------------------------------------------
@@ -512,8 +519,8 @@ function extractCampaignId(order: ShopifyOrderPayload): string | null {
 /**
  * Enqueue a BullMQ job for async processing.
  *
- * In production this imports the BullMQ queue from the workers package.
- * The job name maps to a registered BullMQ processor in services/workers.
+ * Routes webhook payloads to the appropriate queue based on job type.
+ * Uses the centralized queue exports from the API's lib/queues module.
  *
  * @param jobName - BullMQ job name (maps to processor registration)
  * @param data    - Job payload
@@ -522,22 +529,46 @@ async function enqueueJob(
   jobName: string,
   data: Record<string, unknown>
 ): Promise<void> {
-  // Dynamic import to avoid circular dependencies during testing
-  // In production, replace with direct import of the queue singleton:
-  //   import { shopifyQueue } from "@loocbooc/workers/queues";
-  //   await shopifyQueue.add(jobName, data, { attempts: 3, backoff: { type: "exponential", delay: 1000 } });
+  // Import queues lazily to avoid circular dependency issues
+  const { shopifySyncQueue, emailNotificationQueue } = await import("../../lib/queues.js");
 
-  // Stub implementation — logs intent for now
-  console.info(`[enqueueJob] ${jobName}`, JSON.stringify(data).slice(0, 200));
+  const jobOptions = {
+    attempts: 3,
+    backoff: { type: "exponential" as const, delay: 2000 },
+    removeOnComplete: { count: 1000 },
+    removeOnFail: { count: 5000 },
+  };
 
-  // TODO: wire up to BullMQ shopify queue once workers package is scaffolded
-  // Example:
-  // const { Queue } = await import("bullmq");
-  // const queue = new Queue("shopify", { connection: redisConnection });
-  // await queue.add(jobName, data, {
-  //   attempts: 3,
-  //   backoff: { type: "exponential", delay: 2000 },
-  //   removeOnComplete: { count: 1000 },
-  //   removeOnFail: { count: 5000 },
-  // });
+  // Route to the appropriate queue based on job name prefix
+  if (jobName.startsWith("shopify.")) {
+    // Convert webhook job names to the topics the worker expects
+    // e.g. "shopify.confirm-backing-payment" → worker handles "orders/paid"
+    const topicMap: Record<string, string> = {
+      "shopify.confirm-backing-payment": "orders/paid",
+      "shopify.cancel-backing": "orders/cancelled",
+      "shopify.app-uninstalled": "app/uninstalled",
+    };
+
+    const topic = topicMap[jobName] ?? jobName.replace("shopify.", "");
+    const shopId = (data.shopDomain as string)?.split(".")[0] ?? "unknown";
+
+    await shopifySyncQueue.add(topic, {
+      shopId,
+      topic,
+      payload: data.order ?? data,
+      receivedAt: new Date().toISOString(),
+    }, jobOptions);
+
+  } else if (jobName.startsWith("gdpr.")) {
+    // GDPR requests go to the shopify-sync queue for processing
+    await shopifySyncQueue.add(jobName, {
+      ...data,
+      receivedAt: new Date().toISOString(),
+    }, jobOptions);
+
+  } else {
+    // Default fallback — log a warning if we receive an unexpected job type
+    console.warn(`[enqueueJob] Unknown job type: ${jobName} — routing to shopify-sync`);
+    await shopifySyncQueue.add(jobName, data, jobOptions);
+  }
 }

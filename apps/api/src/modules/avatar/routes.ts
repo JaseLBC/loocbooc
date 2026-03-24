@@ -86,12 +86,14 @@ export async function avatarRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── Get avatar ───────────────────────────────────────────────────────────────
-  app.get("/:avatarId", {
+  app.get<{ Params: { avatarId: string } }>("/:avatarId", {
     preHandler: [requireAuth],
-  }, async (request: FastifyRequest<{ Params: { avatarId: string } }>, reply: FastifyReply) => {
+  }, async (request, reply) => {
     try {
       const userId = request.user!.id;
-      const isAdmin = request.user!.role === "admin";
+      // Role values come from Prisma enum which may not match types package — compare as strings
+      const roleStr = String(request.user!.role);
+      const isAdmin = roleStr === "admin" || roleStr === "platform_admin";
       const avatar = await getAvatar(request.params.avatarId, userId, isAdmin);
       return reply.send({ avatar });
     } catch (err) {
@@ -100,10 +102,10 @@ export async function avatarRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── Update avatar ────────────────────────────────────────────────────────────
-  app.patch("/:avatarId", {
+  app.patch<{ Params: { avatarId: string } }>("/:avatarId", {
     preHandler: [requireAuth],
     schema: { body: avatarBodyJsonSchema },
-  }, async (request: FastifyRequest<{ Params: { avatarId: string } }>, reply: FastifyReply) => {
+  }, async (request, reply) => {
     try {
       const userId = request.user!.id;
       const parsed = UpdateAvatarSchema.safeParse(request.body);
@@ -118,9 +120,9 @@ export async function avatarRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── Delete avatar ────────────────────────────────────────────────────────────
-  app.delete("/:avatarId", {
+  app.delete<{ Params: { avatarId: string } }>("/:avatarId", {
     preHandler: [requireAuth],
-  }, async (request: FastifyRequest<{ Params: { avatarId: string } }>, reply: FastifyReply) => {
+  }, async (request, reply) => {
     try {
       const userId = request.user!.id;
       await deleteAvatar(request.params.avatarId, userId);
@@ -131,12 +133,9 @@ export async function avatarRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── Fit recommendation ───────────────────────────────────────────────────────
-  app.get("/:avatarId/fit", {
+  app.get<{ Params: { avatarId: string }; Querystring: { skuId?: string; sizeChartId?: string } }>("/:avatarId/fit", {
     preHandler: [requireAuth],
-  }, async (
-    request: FastifyRequest<{ Params: { avatarId: string }; Querystring: { skuId?: string; sizeChartId?: string } }>,
-    reply: FastifyReply,
-  ) => {
+  }, async (request, reply) => {
     try {
       const userId = request.user!.id;
       const parsed = GetFitRecommendationSchema.safeParse({
@@ -155,9 +154,9 @@ export async function avatarRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── Taste profile ────────────────────────────────────────────────────────────
-  app.get("/:avatarId/taste", {
+  app.get<{ Params: { avatarId: string } }>("/:avatarId/taste", {
     preHandler: [requireAuth],
-  }, async (request: FastifyRequest<{ Params: { avatarId: string } }>, reply: FastifyReply) => {
+  }, async (request, reply) => {
     try {
       const userId = request.user!.id;
       const profile = await getAvatarTasteProfile(request.params.avatarId, userId);
@@ -178,7 +177,18 @@ export async function avatarRoutes(app: FastifyInstance): Promise<void> {
         return reply.code(400).send({ error: { code: "VALIDATION_ERROR", message: "Invalid signal.", details: parsed.error.flatten() } });
       }
       // Fire and forget — don't await
-      void recordTasteSignal({ userId, ...parsed.data });
+      // Build input object, only including defined properties to satisfy exactOptionalPropertyTypes
+      const signalInput: import("./types.js").TasteSignalInput = {
+        userId,
+        signalType: parsed.data.signalType,
+      };
+      if (parsed.data.entityId !== undefined) signalInput.entityId = parsed.data.entityId;
+      if (parsed.data.entityType !== undefined) signalInput.entityType = parsed.data.entityType;
+      if (parsed.data.avatarId !== undefined) signalInput.avatarId = parsed.data.avatarId;
+      if (parsed.data.payload !== undefined) signalInput.payload = parsed.data.payload;
+      if (parsed.data.sessionId !== undefined) signalInput.sessionId = parsed.data.sessionId;
+
+      void recordTasteSignal(signalInput);
       return reply.code(202).send({ ok: true });
     } catch (err) {
       return handleServiceError(err, reply);
@@ -196,8 +206,9 @@ export async function sizeChartRoutes(app: FastifyInstance): Promise<void> {
     preHandler: [requireAuth],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const role = request.user?.role;
-      if (role !== "brand_owner" && role !== "brand_member" && role !== "admin") {
+      const roleStr = String(request.user?.role ?? "");
+      const isBrandOrAdmin = ["brand", "brand_owner", "brand_member", "admin", "platform_admin"].includes(roleStr);
+      if (!isBrandOrAdmin) {
         return reply.code(403).send({ error: { code: "FORBIDDEN", message: "Brand access required." } });
       }
       const parsed = SizeChartSchema.safeParse(request.body);
@@ -216,9 +227,9 @@ export async function sizeChartRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // List size charts for a brand
-  app.get("/", {
+  app.get<{ Querystring: { brandId?: string } }>("/", {
     preHandler: [requireAuth],
-  }, async (request: FastifyRequest<{ Querystring: { brandId?: string } }>, reply: FastifyReply) => {
+  }, async (request, reply) => {
     try {
       const brandId = request.query.brandId;
       if (!brandId) {
@@ -233,12 +244,13 @@ export async function sizeChartRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // Delete size chart — brand only
-  app.delete("/:chartId", {
+  app.delete<{ Params: { chartId: string } }>("/:chartId", {
     preHandler: [requireAuth],
-  }, async (request: FastifyRequest<{ Params: { chartId: string } }>, reply: FastifyReply) => {
+  }, async (request, reply) => {
     try {
-      const role = request.user?.role;
-      if (role !== "brand_owner" && role !== "brand_member" && role !== "admin") {
+      const roleStr = String(request.user?.role ?? "");
+      const isBrandOrAdmin = ["brand", "brand_owner", "brand_member", "admin", "platform_admin"].includes(roleStr);
+      if (!isBrandOrAdmin) {
         return reply.code(403).send({ error: { code: "FORBIDDEN", message: "Brand access required." } });
       }
       await deleteSizeChart(request.params.chartId);

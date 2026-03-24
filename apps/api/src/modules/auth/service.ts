@@ -3,8 +3,9 @@
  * Keeps our `users` table in sync with Supabase Auth.
  */
 
-import { prisma } from "@loocbooc/database";
-import type { User } from "@loocbooc/database";
+import { prisma, Prisma } from "@loocbooc/database";
+
+type User = Prisma.UserGetPayload<object>;
 
 interface SyncUserInput {
   id: string;

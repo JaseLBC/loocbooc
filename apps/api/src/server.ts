@@ -19,10 +19,19 @@ async function buildApp() {
         transport: undefined,
       }),
     },
-    // Expose raw body for HMAC webhook verification
-    addContentTypeParser: undefined,
     genReqId: () => crypto.randomUUID(),
     requestIdHeader: "x-request-id",
+  });
+  
+  // Add raw body parser for webhook HMAC verification (Shopify, Stripe)
+  // This adds req.rawBody to requests with application/json
+  app.addContentTypeParser("application/json", { parseAs: "buffer" }, (req, body, done) => {
+    (req as unknown as { rawBody: Buffer }).rawBody = body as Buffer;
+    try {
+      done(null, body.length > 0 ? JSON.parse(body.toString()) : undefined);
+    } catch (err) {
+      done(err as Error, undefined);
+    }
   });
 
   // Register plugins (auth, cors, rate-limiting)

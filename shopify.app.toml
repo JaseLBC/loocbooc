@@ -1,0 +1,26 @@
+# Loocbooc Shopify App Configuration
+# https://shopify.dev/docs/apps/tools/cli/configuration
+
+name = "Loocbooc"
+client_id = "01888f8d611cefb317fc6ceb62033d54"
+application_url = "https://app.loocbooc.com"
+embedded = true
+
+[access_scopes]
+scopes = "read_products,write_products,read_customers,read_orders"
+
+[auth]
+redirect_urls = [
+  "https://app.loocbooc.com/api/auth/shopify/callback",
+  "http://localhost:3000/api/auth/shopify/callback"
+]
+
+[webhooks]
+api_version = "2024-01"
+
+[pos]
+embedded = false
+
+[build]
+automatically_update_urls_on_dev = true
+dev_store_url = "loocbooc-dev.myshopify.com"

@@ -13,7 +13,7 @@ import React, { useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { QuestionnaireRenderer } from '../../components/questionnaire'
 import type { RenderMode } from '../../components/questionnaire'
-import questionnaireData from '../../../public/loocbooc-stakeholder-questionnaires.json'
+import questionnaireData from '../../data/loocbooc-stakeholder-questionnaires.json'
 
 // Type cast the imported JSON
 const data = questionnaireData as typeof questionnaireData & {

@@ -15,7 +15,8 @@
  */
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
-import { PLMStage } from "@prisma/client";
+import type { $Enums } from "@loocbooc/database/generated/client";
+type PLMStage = $Enums.PLMStage;
 import { PLMService } from "./service";
 
 // ─────────────────────────────────────────────
@@ -70,8 +71,16 @@ interface SampleRoundBody {
 // Validation helpers
 // ─────────────────────────────────────────────
 
+const PLM_STAGES: readonly PLMStage[] = [
+  "DESIGN", "TECH_PACK_SENT", "TECH_PACK_APPROVED", "SAMPLE_ORDERED",
+  "SAMPLE_IN_PRODUCTION", "SAMPLE_SHIPPED", "SAMPLE_RECEIVED", "FIT_SESSION",
+  "ADJUSTMENTS_SENT", "COUNTER_SAMPLE_REQUESTED", "COUNTER_SAMPLE_SHIPPED",
+  "COUNTER_SAMPLE_RECEIVED", "BULK_APPROVED", "IN_PRODUCTION", "SHIPPED",
+  "DELIVERED", "CANCELLED",
+] as const;
+
 function isValidPLMStage(stage: string): stage is PLMStage {
-  return Object.values(PLMStage).includes(stage as PLMStage);
+  return (PLM_STAGES as readonly string[]).includes(stage);
 }
 
 function badRequest(reply: FastifyReply, message: string, code = "VALIDATION_ERROR") {
@@ -190,7 +199,7 @@ export async function plmRoutes(
       if (!isValidPLMStage(body.newStage)) {
         return badRequest(
           reply,
-          `Invalid stage '${body.newStage}'. Must be one of: ${Object.values(PLMStage).join(", ")}.`
+          `Invalid stage '${body.newStage}'. Must be one of: ${PLM_STAGES.join(", ")}.`
         );
       }
 

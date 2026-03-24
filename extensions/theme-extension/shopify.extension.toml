@@ -1,0 +1,13 @@
+# Loocbooc Theme Extension Configuration
+
+type = "theme_app_extension"
+name = "Loocbooc Virtual Try-On"
+handle = "loocbooc-tryon"
+
+[[assets]]
+type = "theme_app_extension"
+assets_directory = "assets"
+
+[[theme_extension.embedded_blocks]]
+template = "product"
+theme_app_extension = true

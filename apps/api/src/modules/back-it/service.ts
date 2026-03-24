@@ -8,8 +8,8 @@
  * - All payment flows go through Stripe; DB is updated on webhook confirmation
  */
 
-import type { Campaign, Backing, CampaignSizeBreak } from "@loocbooc/database";
-import { prisma } from "@loocbooc/database";
+import type { Campaign, CampaignSizeBreak } from "@loocbooc/database";
+import { prisma, Prisma } from "@loocbooc/database";
 import { stripe } from "../../lib/stripe.js";
 import { enqueueJob } from "../../lib/queues.js";
 import { calculateDepositCents, calculateRemainingCents } from "@loocbooc/utils";
@@ -73,23 +73,23 @@ export async function createCampaign(
       brandId,
       garmentId: input.garmentId,
       title: input.title,
-      description: input.description,
+      description: input.description ?? null,
       slug: input.slug,
       retailPriceCents: input.retailPriceCents,
       backerPriceCents: input.backerPriceCents,
       depositPercent: input.depositPercent ?? 100,
       currency: input.currency ?? "AUD",
       moq: input.moq,
-      stretchGoalQty: input.stretchGoalQty,
+      stretchGoalQty: input.stretchGoalQty ?? null,
       campaignStart: new Date(input.campaignStart),
       campaignEnd: new Date(input.campaignEnd),
       estimatedShipDate: input.estimatedShipDate
         ? new Date(input.estimatedShipDate)
         : null,
-      manufacturerId: input.manufacturerId,
-      shopifyStoreUrl: input.shopifyStoreUrl,
+      manufacturerId: input.manufacturerId ?? null,
+      shopifyStoreUrl: input.shopifyStoreUrl ?? null,
       availableSizes: input.availableSizes,
-      sizeLimits: input.sizeLimits ?? null,
+      sizeLimits: input.sizeLimits ?? Prisma.JsonNull,
     },
   });
 
@@ -190,13 +190,13 @@ export async function cancelCampaign(id: string, brandId: string, actorId: strin
 
 export async function listBrandCampaigns(
   brandId: string,
-  query: { status?: string; page: number; pageSize: number },
+  query: { status?: string | undefined; page: number; pageSize: number },
 ) {
   const { skip, take } = parsePagination({ page: query.page, pageSize: query.pageSize });
 
-  const where = {
+  const where: Prisma.CampaignWhereInput = {
     brandId,
-    ...(query.status && { status: query.status as Campaign["status"] }),
+    ...(query.status ? { status: query.status as Campaign["status"] } : {}),
   };
 
   const [campaigns, total] = await Promise.all([
@@ -283,20 +283,22 @@ export async function placeBacking(
   const remainingCents = calculateRemainingCents(totalCents, depositCents);
 
   // Create Stripe PaymentIntent for the deposit
-  const paymentIntent = await stripe.paymentIntents.create({
-    amount: depositCents,
-    currency: campaign.currency.toLowerCase(),
-    payment_method: input.paymentMethodId,
-    confirm: true,
-    automatic_payment_methods: { enabled: true, allow_redirects: "never" },
-    metadata: {
-      campaignId,
-      userId,
-      size: input.size,
-      quantity: String(quantity),
+  const paymentIntent = await stripe.paymentIntents.create(
+    {
+      amount: depositCents,
+      currency: campaign.currency.toLowerCase(),
+      payment_method: input.paymentMethodId,
+      confirm: true,
+      automatic_payment_methods: { enabled: true, allow_redirects: "never" },
+      metadata: {
+        campaignId,
+        userId,
+        size: input.size,
+        quantity: String(quantity),
+      },
     },
-    idempotency_key: `backing-${campaignId}-${userId}-${Date.now()}`,
-  });
+    { idempotencyKey: `backing-${campaignId}-${userId}-${Date.now()}` }
+  );
 
   // Atomically create backing and increment counts
   const backing = await prisma.$transaction(async (tx) => {
@@ -887,7 +889,9 @@ export async function confirmBacking(
   // Extract context from PI metadata
   const size = meta.size ?? "";
   const quantity = parseInt(meta.quantity ?? "1", 10);
-  const shippingAddress = meta.shipping ? (JSON.parse(meta.shipping) as Record<string, unknown>) : {};
+  const shippingAddress = meta.shipping
+    ? (JSON.parse(meta.shipping) as Prisma.InputJsonValue)
+    : Prisma.JsonNull;
 
   // Verify campaign is still in a valid state
   const campaign = await prisma.campaign.findUnique({ where: { id: campaignId } });
@@ -978,6 +982,347 @@ export async function confirmBacking(
   };
 }
 
+// ── Public campaign discovery ─────────────────────────────────────────────────
+
+export interface BrowseCampaignsQuery {
+  status: string | undefined;
+  category: string | undefined;
+  search: string | undefined;
+  sort: "newest" | "ending_soon" | "most_backed" | "percent_funded" | undefined;
+  limit: number;
+  offset: number;
+}
+
+export interface PublicCampaignSummary {
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  status: string;
+  coverImageUrl: string | null;
+  galleryUrls: string[];
+  retailPriceCents: number;
+  backerPriceCents: number;
+  depositPercent: number;
+  currency: string;
+  moq: number;
+  currentBackingCount: number;
+  percentFunded: number;
+  moqReached: boolean;
+  moqReachedAt: string | null;
+  stretchGoalQty: number | null;
+  campaignStart: string;
+  campaignEnd: string;
+  estimatedShipDate: string | null;
+  availableSizes: string[];
+  brandId: string;
+  brand: {
+    id: string;
+    name: string;
+    slug: string;
+    logoUrl: string | null;
+  };
+  garment: {
+    id: string;
+    name: string;
+    category: string | null;
+  };
+  sizeBreaks: Array<{ size: string; backingCount: number }>;
+}
+
+export interface BrowseCampaignsResult {
+  data: PublicCampaignSummary[];
+  pagination: {
+    total: number;
+    limit: number;
+    offset: number;
+    hasMore: boolean;
+  };
+}
+
+/**
+ * Public campaign browse — the consumer-facing discovery endpoint.
+ * Returns active campaigns by default (consumer explore page).
+ * Supports full-text search, category filter, and multiple sort modes.
+ */
+export async function browseCampaigns(
+  query: BrowseCampaignsQuery,
+): Promise<BrowseCampaignsResult> {
+  const { limit, offset } = query;
+
+  // Default to active campaigns for the public consumer explore page.
+  // Admin and brand routes use their own scoped queries.
+  const statusFilter = (query.status ?? "active") as
+    | "draft" | "scheduled" | "active" | "moq_reached" | "funded"
+    | "in_production" | "shipped" | "completed" | "cancelled" | "expired";
+
+  // Build the where clause as a plain object. Cast to any to avoid the
+  // Prisma exactOptionalPropertyTypes friction — the runtime query is correct.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const where: any = { status: statusFilter };
+
+  // Category filter — joins through the garment relation
+  if (query.category) {
+    where.garment = { category: query.category };
+  }
+
+  // Full-text search: match on title or description
+  if (query.search && query.search.trim().length > 0) {
+    const term = query.search.trim();
+    where.OR = [
+      { title: { contains: term, mode: "insensitive" } },
+      { description: { contains: term, mode: "insensitive" } },
+    ];
+  }
+
+  // Build sort order
+  type OrderByClause =
+    | { createdAt: "desc" }
+    | { campaignEnd: "asc" }
+    | { currentBackingCount: "desc" };
+
+  let orderBy: OrderByClause;
+  switch (query.sort) {
+    case "ending_soon":
+      orderBy = { campaignEnd: "asc" };
+      break;
+    case "most_backed":
+      orderBy = { currentBackingCount: "desc" };
+      break;
+    case "percent_funded":
+      // percent = currentBackingCount / moq. Approximate via most_backed for now
+      // (true ratio sort requires a computed column or subquery; defer to v2)
+      orderBy = { currentBackingCount: "desc" };
+      break;
+    case "newest":
+    default:
+      orderBy = { createdAt: "desc" };
+  }
+
+  const [campaigns, total] = await Promise.all([
+    prisma.campaign.findMany({
+      where,
+      take: limit,
+      skip: offset,
+      orderBy,
+      include: {
+        brand: { select: { id: true, name: true, slug: true, logoUrl: true } },
+        garment: { select: { id: true, name: true, category: true } },
+        sizeBreaks: { select: { size: true, backingCount: true }, orderBy: { size: "asc" } },
+      },
+    }),
+    prisma.campaign.count({ where }),
+  ]);
+
+  const data: PublicCampaignSummary[] = campaigns.map((c) => ({
+    id: c.id,
+    slug: c.slug,
+    title: c.title,
+    description: c.description,
+    status: c.status,
+    coverImageUrl: c.coverImageUrl,
+    galleryUrls: c.galleryUrls,
+    retailPriceCents: c.retailPriceCents,
+    backerPriceCents: c.backerPriceCents,
+    depositPercent: c.depositPercent,
+    currency: c.currency,
+    moq: c.moq,
+    currentBackingCount: c.currentBackingCount,
+    percentFunded: c.moq > 0 ? Math.min(100, Math.round((c.currentBackingCount / c.moq) * 100)) : 0,
+    moqReached: c.moqReached,
+    moqReachedAt: c.moqReachedAt?.toISOString() ?? null,
+    stretchGoalQty: c.stretchGoalQty,
+    campaignStart: c.campaignStart.toISOString(),
+    campaignEnd: c.campaignEnd.toISOString(),
+    estimatedShipDate: c.estimatedShipDate?.toISOString() ?? null,
+    availableSizes: c.availableSizes,
+    brandId: c.brandId,
+    brand: c.brand,
+    garment: c.garment,
+    sizeBreaks: c.sizeBreaks,
+  }));
+
+  return {
+    data,
+    pagination: { total, limit, offset, hasMore: offset + limit < total },
+  };
+}
+
+/**
+ * Get a single campaign by its public slug.
+ * Used by the consumer-facing campaign page (/back/:slug).
+ * Includes full detail — garment, brand, size breaks, garment category.
+ */
+export async function getCampaignBySlug(slug: string): Promise<PublicCampaignSummary> {
+  const campaign = await prisma.campaign.findUnique({
+    where: { slug },
+    include: {
+      brand: { select: { id: true, name: true, slug: true, logoUrl: true } },
+      garment: { select: { id: true, name: true, category: true } },
+      sizeBreaks: { select: { size: true, backingCount: true }, orderBy: { size: "asc" } },
+    },
+  });
+
+  if (!campaign) {
+    throw new ServiceError("CAMPAIGN_NOT_FOUND", `Campaign '${slug}' not found.`, 404);
+  }
+
+  // Non-draft statuses are visible publicly. Drafts are brand-only.
+  if (campaign.status === "draft") {
+    throw new ServiceError("CAMPAIGN_NOT_FOUND", `Campaign '${slug}' not found.`, 404);
+  }
+
+  return {
+    id: campaign.id,
+    slug: campaign.slug,
+    title: campaign.title,
+    description: campaign.description,
+    status: campaign.status,
+    coverImageUrl: campaign.coverImageUrl,
+    galleryUrls: campaign.galleryUrls,
+    retailPriceCents: campaign.retailPriceCents,
+    backerPriceCents: campaign.backerPriceCents,
+    depositPercent: campaign.depositPercent,
+    currency: campaign.currency,
+    moq: campaign.moq,
+    currentBackingCount: campaign.currentBackingCount,
+    percentFunded:
+      campaign.moq > 0
+        ? Math.min(100, Math.round((campaign.currentBackingCount / campaign.moq) * 100))
+        : 0,
+    moqReached: campaign.moqReached,
+    moqReachedAt: campaign.moqReachedAt?.toISOString() ?? null,
+    stretchGoalQty: campaign.stretchGoalQty,
+    campaignStart: campaign.campaignStart.toISOString(),
+    campaignEnd: campaign.campaignEnd.toISOString(),
+    estimatedShipDate: campaign.estimatedShipDate?.toISOString() ?? null,
+    availableSizes: campaign.availableSizes,
+    brandId: campaign.brandId,
+    brand: campaign.brand,
+    garment: campaign.garment,
+    sizeBreaks: campaign.sizeBreaks,
+  };
+}
+
+// ── Consumer backings ─────────────────────────────────────────────────────────
+
+export interface ConsumerBackingSummary {
+  id: string;
+  size: string;
+  quantity: number;
+  totalCents: number;
+  depositCents: number;
+  remainingCents: number;
+  currency: string;
+  depositStatus: string;
+  finalPaymentStatus: string;
+  status: string;
+  createdAt: string;
+  cancelledAt: string | null;
+  refundedAt: string | null;
+  campaign: {
+    id: string;
+    slug: string;
+    title: string;
+    status: string;
+    coverImageUrl: string | null;
+    moq: number;
+    currentBackingCount: number;
+    moqReached: boolean;
+    estimatedShipDate: string | null;
+    campaignEnd: string;
+    brand: {
+      id: string;
+      name: string;
+      logoUrl: string | null;
+    };
+  };
+}
+
+export interface ConsumerBackingsResult {
+  data: ConsumerBackingSummary[];
+  pagination: {
+    total: number;
+    limit: number;
+    offset: number;
+    hasMore: boolean;
+  };
+}
+
+/**
+ * Return all backings placed by a given consumer, with campaign context.
+ * Ordered by most recent first.
+ * Used by the consumer's account/backing history page.
+ */
+export async function getConsumerBackings(
+  userId: string,
+  limit: number,
+  offset: number,
+): Promise<ConsumerBackingsResult> {
+  const where = { userId };
+
+  const [backings, total] = await Promise.all([
+    prisma.backing.findMany({
+      where,
+      take: limit,
+      skip: offset,
+      orderBy: { createdAt: "desc" },
+      include: {
+        campaign: {
+          select: {
+            id: true,
+            slug: true,
+            title: true,
+            status: true,
+            coverImageUrl: true,
+            moq: true,
+            currentBackingCount: true,
+            moqReached: true,
+            estimatedShipDate: true,
+            campaignEnd: true,
+            brand: { select: { id: true, name: true, logoUrl: true } },
+          },
+        },
+      },
+    }),
+    prisma.backing.count({ where }),
+  ]);
+
+  const data: ConsumerBackingSummary[] = backings.map((b) => ({
+    id: b.id,
+    size: b.size,
+    quantity: b.quantity,
+    totalCents: b.totalCents,
+    depositCents: b.depositCents,
+    remainingCents: b.remainingCents,
+    currency: b.currency,
+    depositStatus: b.depositStatus,
+    finalPaymentStatus: b.finalPaymentStatus,
+    status: b.status,
+    createdAt: b.createdAt.toISOString(),
+    cancelledAt: b.cancelledAt?.toISOString() ?? null,
+    refundedAt: b.refundedAt?.toISOString() ?? null,
+    campaign: {
+      id: b.campaign.id,
+      slug: b.campaign.slug,
+      title: b.campaign.title,
+      status: b.campaign.status,
+      coverImageUrl: b.campaign.coverImageUrl,
+      moq: b.campaign.moq,
+      currentBackingCount: b.campaign.currentBackingCount,
+      moqReached: b.campaign.moqReached,
+      estimatedShipDate: b.campaign.estimatedShipDate?.toISOString() ?? null,
+      campaignEnd: b.campaign.campaignEnd.toISOString(),
+      brand: b.campaign.brand,
+    },
+  }));
+
+  return {
+    data,
+    pagination: { total, limit, offset, hasMore: offset + limit < total },
+  };
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 async function logCampaignEvent(
@@ -987,7 +1332,12 @@ async function logCampaignEvent(
   payload: Record<string, unknown>,
 ): Promise<void> {
   await prisma.campaignEvent.create({
-    data: { campaignId, eventType, actorId, payload },
+    data: {
+      campaignId,
+      eventType,
+      actorId,
+      payload: (payload ?? {}) as Prisma.InputJsonValue,
+    },
   });
 }
 

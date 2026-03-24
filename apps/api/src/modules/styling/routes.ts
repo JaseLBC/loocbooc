@@ -46,6 +46,7 @@
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { requireAuth } from "../auth/guards.js";
+import { UserRole } from "@loocbooc/types";
 import {
   createStylist,
   updateStylist,
@@ -92,7 +93,7 @@ import {
 // Error handler helper
 // ─────────────────────────────────────────────
 
-function handleError(err: unknown, reply: FastifyReply) {
+function handleError(err: unknown, reply: FastifyReply): ReturnType<typeof reply.send> {
   if (err instanceof StylingError) {
     return reply.code(err.statusCode).send({
       error: { code: err.code, message: err.message, details: err.details ?? null },
@@ -109,20 +110,17 @@ function handleError(err: unknown, reply: FastifyReply) {
 export async function stylistRoutes(app: FastifyInstance): Promise<void> {
 
   // ── Search stylists (public) ─────────────────────────────────────────────
-  app.get("/", async (
-    request: FastifyRequest<{
-      Querystring: {
-        search?: string;
-        specialisation?: string;
-        limit?: string;
-        offset?: string;
-        onlyAvailable?: string;
-        onlyVerified?: string;
-        maxBudgetCents?: string;
-      };
-    }>,
-    reply: FastifyReply,
-  ) => {
+  app.get<{
+    Querystring: {
+      search?: string;
+      specialisation?: string;
+      limit?: string;
+      offset?: string;
+      onlyAvailable?: string;
+      onlyVerified?: string;
+      maxBudgetCents?: string;
+    };
+  }>("/", async (request, reply) => {
     try {
       const parsed = StylistSearchSchema.safeParse(request.query);
       if (!parsed.success) {
@@ -179,10 +177,7 @@ export async function stylistRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── Get stylist by id or slug (public) ──────────────────────────────────
-  app.get("/:idOrSlug", async (
-    request: FastifyRequest<{ Params: { idOrSlug: string } }>,
-    reply: FastifyReply,
-  ) => {
+  app.get<{ Params: { idOrSlug: string } }>("/:idOrSlug", async (request, reply) => {
     try {
       const stylist = await getStylist(request.params.idOrSlug);
       return reply.send({ stylist });
@@ -192,15 +187,15 @@ export async function stylistRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── Update stylist profile ──────────────────────────────────────────────
-  app.patch("/:id", {
+  app.patch<{ Params: { id: string } }>("/:id", {
     preHandler: [requireAuth],
-  }, async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+  }, async (request, reply) => {
     try {
       const parsed = UpdateStylistSchema.safeParse(request.body);
       if (!parsed.success) {
         return reply.code(400).send({ error: { code: "VALIDATION_ERROR", message: "Invalid input.", details: parsed.error.flatten() } });
       }
-      const isAdmin = request.user!.role === "admin";
+      const isAdmin = request.user!.role === UserRole.PLATFORM_ADMIN;
       const stylist = await updateStylist(request.params.id, request.user!.id, parsed.data, isAdmin);
       return reply.send({ stylist });
     } catch (err) {
@@ -209,9 +204,9 @@ export async function stylistRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── Add portfolio item ──────────────────────────────────────────────────
-  app.post("/:id/portfolio", {
+  app.post<{ Params: { id: string } }>("/:id/portfolio", {
     preHandler: [requireAuth],
-  }, async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+  }, async (request, reply) => {
     try {
       const parsed = AddPortfolioItemSchema.safeParse(request.body);
       if (!parsed.success) {
@@ -225,9 +220,9 @@ export async function stylistRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── Remove portfolio item ───────────────────────────────────────────────
-  app.delete("/:id/portfolio/:itemId", {
+  app.delete<{ Params: { id: string; itemId: string } }>("/:id/portfolio/:itemId", {
     preHandler: [requireAuth],
-  }, async (request: FastifyRequest<{ Params: { id: string; itemId: string } }>, reply: FastifyReply) => {
+  }, async (request, reply) => {
     try {
       await deletePortfolioItem(request.params.itemId, request.user!.id);
       return reply.code(204).send();
@@ -237,9 +232,9 @@ export async function stylistRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── Rate a stylist ──────────────────────────────────────────────────────
-  app.post("/:id/rate", {
+  app.post<{ Params: { id: string } }>("/:id/rate", {
     preHandler: [requireAuth],
-  }, async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+  }, async (request, reply) => {
     try {
       const parsed = RateStylistSchema.safeParse(request.body);
       if (!parsed.success) {
@@ -260,12 +255,9 @@ export async function stylistRoutes(app: FastifyInstance): Promise<void> {
 export async function briefRoutes(app: FastifyInstance): Promise<void> {
 
   // ── Brief feed for stylists ─────────────────────────────────────────────
-  app.get("/feed", {
+  app.get<{ Querystring: { limit?: string; offset?: string } }>("/feed", {
     preHandler: [requireAuth],
-  }, async (
-    request: FastifyRequest<{ Querystring: { limit?: string; offset?: string } }>,
-    reply: FastifyReply,
-  ) => {
+  }, async (request, reply) => {
     try {
       // Any authenticated user can see the feed — they need a stylist profile to accept
       const stylistProfile = await getMyStylistProfile(request.user!.id);
@@ -282,12 +274,9 @@ export async function briefRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── My stylist briefs ───────────────────────────────────────────────────
-  app.get("/mine", {
+  app.get<{ Querystring: { limit?: string; offset?: string; status?: string } }>("/mine", {
     preHandler: [requireAuth],
-  }, async (
-    request: FastifyRequest<{ Querystring: { limit?: string; offset?: string; status?: string } }>,
-    reply: FastifyReply,
-  ) => {
+  }, async (request, reply) => {
     try {
       const briefs = await getMyStylistBriefs(request.user!.id, {
         limit: parseInt(request.query.limit ?? "20", 10),
@@ -317,12 +306,9 @@ export async function briefRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── My briefs (consumer) ────────────────────────────────────────────────
-  app.get("/", {
+  app.get<{ Querystring: { limit?: string; offset?: string; status?: string } }>("/", {
     preHandler: [requireAuth],
-  }, async (
-    request: FastifyRequest<{ Querystring: { limit?: string; offset?: string; status?: string } }>,
-    reply: FastifyReply,
-  ) => {
+  }, async (request, reply) => {
     try {
       const briefs = await getMyBriefs(request.user!.id, {
         limit: parseInt(request.query.limit ?? "20", 10),
@@ -336,9 +322,9 @@ export async function briefRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── Get brief detail ────────────────────────────────────────────────────
-  app.get("/:id", {
+  app.get<{ Params: { id: string } }>("/:id", {
     preHandler: [requireAuth],
-  }, async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+  }, async (request, reply) => {
     try {
       const brief = await getBrief(request.params.id, request.user!.id);
       return reply.send({ brief });
@@ -348,9 +334,9 @@ export async function briefRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── Update brief ────────────────────────────────────────────────────────
-  app.patch("/:id", {
+  app.patch<{ Params: { id: string } }>("/:id", {
     preHandler: [requireAuth],
-  }, async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+  }, async (request, reply) => {
     try {
       const parsed = UpdateBriefSchema.safeParse(request.body);
       if (!parsed.success) {
@@ -364,9 +350,9 @@ export async function briefRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── Close/cancel brief (consumer) ──────────────────────────────────────
-  app.delete("/:id", {
+  app.delete<{ Params: { id: string } }>("/:id", {
     preHandler: [requireAuth],
-  }, async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+  }, async (request, reply) => {
     try {
       await closeBrief(request.params.id, request.user!.id);
       return reply.code(204).send();
@@ -376,9 +362,9 @@ export async function briefRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── Accept lookbook (consumer) ──────────────────────────────────────────
-  app.post("/:id/accept", {
+  app.post<{ Params: { id: string } }>("/:id/accept", {
     preHandler: [requireAuth],
-  }, async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+  }, async (request, reply) => {
     try {
       const brief = await acceptLookbook(request.params.id, request.user!.id);
       return reply.send({ brief });
@@ -388,9 +374,9 @@ export async function briefRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── Stylist accepts a brief ─────────────────────────────────────────────
-  app.post("/:id/accept-as-stylist", {
+  app.post<{ Params: { id: string } }>("/:id/accept-as-stylist", {
     preHandler: [requireAuth],
-  }, async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+  }, async (request, reply) => {
     try {
       const brief = await acceptBrief(request.params.id, request.user!.id);
       return reply.send({ brief });
@@ -400,9 +386,9 @@ export async function briefRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── Start work on brief (stylist) ──────────────────────────────────────
-  app.post("/:id/start-work", {
+  app.post<{ Params: { id: string } }>("/:id/start-work", {
     preHandler: [requireAuth],
-  }, async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+  }, async (request, reply) => {
     try {
       await startWorkOnBrief(request.params.id, request.user!.id);
       return reply.code(202).send({ ok: true });
@@ -412,9 +398,9 @@ export async function briefRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── Get lookbook ────────────────────────────────────────────────────────
-  app.get("/:briefId/lookbook", {
+  app.get<{ Params: { briefId: string } }>("/:briefId/lookbook", {
     preHandler: [requireAuth],
-  }, async (request: FastifyRequest<{ Params: { briefId: string } }>, reply: FastifyReply) => {
+  }, async (request, reply) => {
     try {
       const lookbook = await getLookbook(request.params.briefId, request.user!.id);
       return reply.send({ lookbook });
@@ -424,9 +410,9 @@ export async function briefRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── Update lookbook metadata ────────────────────────────────────────────
-  app.patch("/:briefId/lookbook", {
+  app.patch<{ Params: { briefId: string } }>("/:briefId/lookbook", {
     preHandler: [requireAuth],
-  }, async (request: FastifyRequest<{ Params: { briefId: string } }>, reply: FastifyReply) => {
+  }, async (request, reply) => {
     try {
       const parsed = UpdateLookbookSchema.safeParse(request.body);
       if (!parsed.success) {
@@ -440,9 +426,9 @@ export async function briefRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── Publish lookbook ────────────────────────────────────────────────────
-  app.post("/:briefId/lookbook/publish", {
+  app.post<{ Params: { briefId: string } }>("/:briefId/lookbook/publish", {
     preHandler: [requireAuth],
-  }, async (request: FastifyRequest<{ Params: { briefId: string } }>, reply: FastifyReply) => {
+  }, async (request, reply) => {
     try {
       const lookbook = await publishLookbook(request.params.briefId, request.user!.id);
       return reply.send({ lookbook });
@@ -452,9 +438,9 @@ export async function briefRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── Add lookbook item ───────────────────────────────────────────────────
-  app.post("/:briefId/lookbook/items", {
+  app.post<{ Params: { briefId: string } }>("/:briefId/lookbook/items", {
     preHandler: [requireAuth],
-  }, async (request: FastifyRequest<{ Params: { briefId: string } }>, reply: FastifyReply) => {
+  }, async (request, reply) => {
     try {
       const parsed = AddLookbookItemSchema.safeParse(request.body);
       if (!parsed.success) {
@@ -468,9 +454,9 @@ export async function briefRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── Update lookbook item ────────────────────────────────────────────────
-  app.patch("/:briefId/lookbook/items/:itemId", {
+  app.patch<{ Params: { briefId: string; itemId: string } }>("/:briefId/lookbook/items/:itemId", {
     preHandler: [requireAuth],
-  }, async (request: FastifyRequest<{ Params: { briefId: string; itemId: string } }>, reply: FastifyReply) => {
+  }, async (request, reply) => {
     try {
       const parsed = UpdateLookbookItemSchema.safeParse(request.body);
       if (!parsed.success) {
@@ -484,9 +470,9 @@ export async function briefRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── Remove lookbook item ────────────────────────────────────────────────
-  app.delete("/:briefId/lookbook/items/:itemId", {
+  app.delete<{ Params: { briefId: string; itemId: string } }>("/:briefId/lookbook/items/:itemId", {
     preHandler: [requireAuth],
-  }, async (request: FastifyRequest<{ Params: { briefId: string; itemId: string } }>, reply: FastifyReply) => {
+  }, async (request, reply) => {
     try {
       await removeLookbookItem(request.params.itemId, request.user!.id);
       return reply.code(204).send();

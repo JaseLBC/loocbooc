@@ -207,13 +207,14 @@ function scoreRow(
   let totalWeight = 0;
   let measuredCount = 0;
 
-  const measurementMap: Record<string, { min?: number; max?: number }> = {
-    bust:          { min: row.bustMin,     max: row.bustMax },
-    chest:         { min: row.chestMin,    max: row.chestMax },
-    waist:         { min: row.waistMin,    max: row.waistMax },
-    hips:          { min: row.hipsMin,     max: row.hipsMax },
-    inseam:        { min: row.inseamMin,   max: row.inseamMax },
-    shoulderWidth: { min: row.shoulderMin, max: row.shoulderMax },
+  // Map measurement keys to row fields — chest uses bust values as fallback
+  const measurementMap: Record<string, { min: number | null; max: number | null }> = {
+    bust:          { min: row.bustMin ?? null,     max: row.bustMax ?? null },
+    chest:         { min: row.bustMin ?? null,     max: row.bustMax ?? null }, // use bust as proxy for chest
+    waist:         { min: row.waistMin ?? null,    max: row.waistMax ?? null },
+    hips:          { min: row.hipsMin ?? null,     max: row.hipsMax ?? null },
+    inseam:        { min: row.inseamMin ?? null,   max: row.inseamMax ?? null },
+    shoulderWidth: { min: row.shoulderMin ?? null, max: row.shoulderMax ?? null },
   };
 
   function scoreOne(key: MeasurementKey, weight: number) {
@@ -231,13 +232,13 @@ function scoreRow(
     const numValue = typeof value === "object" ? Number(value) : value as number;
     const { min, max } = range;
 
-    if (min === undefined && max === undefined) {
+    if (min == null && max == null) {
       // Size chart doesn't have this measurement — skip
       return;
     }
 
     measuredCount++;
-    const result = scoreMeasurement(numValue, min, max, ease);
+    const result = scoreMeasurement(numValue, min ?? undefined, max ?? undefined, ease);
     result.measurement = key;
     fits.push(result);
     weightedScore += weight * result.score;
@@ -388,7 +389,7 @@ export function recommendFit(
     if (!firstRow) return false;
     const measurementMap: Record<string, boolean> = {
       bust:          firstRow.bustMin !== undefined || firstRow.bustMax !== undefined,
-      chest:         firstRow.chestMin !== undefined || firstRow.chestMax !== undefined,
+      chest:         firstRow.bustMin !== undefined || firstRow.bustMax !== undefined, // chest uses bust as proxy
       waist:         firstRow.waistMin !== undefined || firstRow.waistMax !== undefined,
       hips:          firstRow.hipsMin !== undefined || firstRow.hipsMax !== undefined,
       inseam:        firstRow.inseamMin !== undefined || firstRow.inseamMax !== undefined,

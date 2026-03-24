@@ -118,7 +118,7 @@ export async function searchManufacturers(
   const offset = (page - 1) * limit;
 
   // Build where clause
-  const where: Parameters<typeof prisma.manufacturerProfile.findMany>[0]["where"] = {
+  const where: Prisma.ManufacturerProfileWhereInput = {
     manufacturer: { active: true },
   };
 
@@ -474,7 +474,7 @@ export async function submitRating(
         qualityScore: input.qualityScore,
         communicationScore: input.communicationScore,
         timelinessScore: input.timelinessScore,
-        review: input.review,
+        review: input.review ?? null,
         ordersCompleted: input.ordersCompleted,
       },
     });
@@ -488,7 +488,7 @@ export async function submitRating(
       qualityScore: input.qualityScore,
       communicationScore: input.communicationScore,
       timelinessScore: input.timelinessScore,
-      review: input.review,
+      review: input.review ?? null,
       ordersCompleted: input.ordersCompleted,
       isVerifiedPurchase: true,
     },
@@ -591,18 +591,18 @@ export async function updateProfile(
       data: {
         manufacturerId: manufacturer.id,
         displayName: data.displayName ?? manufacturer.name,
-        description: data.description,
-        heroImageUrl: data.heroImageUrl,
+        description: data.description ?? null,
+        heroImageUrl: data.heroImageUrl ?? null,
         galleryImageUrls: data.galleryImageUrls ?? [],
-        videoUrl: data.videoUrl,
+        videoUrl: data.videoUrl ?? null,
         country: data.country ?? manufacturer.country,
-        city: data.city,
-        yearEstablished: data.yearEstablished,
-        employeeCount: data.employeeCount,
-        monthlyCapacityMin: data.monthlyCapacityMin,
-        monthlyCapacityMax: data.monthlyCapacityMax,
+        city: data.city ?? null,
+        yearEstablished: data.yearEstablished ?? null,
+        employeeCount: data.employeeCount ?? null,
+        monthlyCapacityMin: data.monthlyCapacityMin ?? null,
+        monthlyCapacityMax: data.monthlyCapacityMax ?? null,
         moqMin: data.moqMin ?? manufacturer.minOrderQty ?? 0,
-        moqMax: data.moqMax,
+        moqMax: data.moqMax ?? null,
         sampleLeadTimeDays: data.sampleLeadTimeDays ?? manufacturer.leadTimeDaysMin ?? 14,
         bulkLeadTimeDays: data.bulkLeadTimeDays ?? manufacturer.leadTimeDaysMax ?? 45,
         specialisations: data.specialisations ?? manufacturer.specialisations,

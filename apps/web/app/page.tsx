@@ -1,79 +1,31 @@
-"use client";
-
 /**
- * Root page — auth-aware redirect.
+ * Root page — serves the public homepage for anonymous visitors,
+ * routes authenticated users to their role-specific dashboard.
  *
- * Authenticated users → routed to their role-specific dashboard.
- * Unauthenticated users → redirected to /explore (public campaign browse).
+ * Architecture:
+ * - This is a Server Component — the homepage itself is fully SSR/ISR
+ * - Auth routing happens client-side (the user's session is browser-state)
+ * - We render the homepage by default (great for SEO, fast first paint)
+ * - The AuthRouteGuard client component handles the auth redirect silently
+ *   after hydration — authenticated users are bounced immediately, no flash
  *
- * The AuthProvider is here because this is outside the (consumer) route group.
- * We use a tiny auth-check to avoid a flash of the wrong content.
+ * Why not redirect on the server?
+ * Auth state is stored in Supabase session cookies. We could read them
+ * server-side, but the homepage is ISR-cached — we can't personalise
+ * server rendering per-user. The auth redirect happens client-side
+ * with a useEffect, which is instant (no layout shift) for authenticated
+ * users who have the session cookie set.
  */
 
-import React, { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { AuthProvider, useAuth } from "../lib/auth";
+import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import HomePage from "./home/page";
 
-function RootRedirect() {
-  const router = useRouter();
-  const { user, isLoading } = useAuth();
+export { metadata } from "./home/page";
 
-  useEffect(() => {
-    if (isLoading) return;
-
-    if (!user) {
-      router.replace("/explore");
-      return;
-    }
-
-    // Route by role
-    const role = (user as unknown as { role?: string }).role ?? "CONSUMER";
-    switch (role) {
-      case "BRAND_OWNER":
-      case "BRAND_MEMBER":
-        router.replace("/plm");
-        break;
-      case "MANUFACTURER":
-        router.replace("/dashboard");
-        break;
-      case "PLATFORM_ADMIN":
-        router.replace("/admin");
-        break;
-      default:
-        router.replace("/explore");
-    }
-  }, [isLoading, user, router]);
-
-  // Minimal loading state while auth resolves
-  return (
-    <div
-      style={{
-        minHeight: "100dvh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#fff",
-      }}
-    >
-      <div
-        style={{
-          fontSize: 22,
-          fontWeight: 700,
-          color: "#0a0a0a",
-          letterSpacing: "-0.02em",
-          opacity: 0.4,
-        }}
-      >
-        loocbooc
-      </div>
-    </div>
-  );
-}
-
-export default function HomePage() {
-  return (
-    <AuthProvider>
-      <RootRedirect />
-    </AuthProvider>
-  );
+export default function RootPage() {
+  // For now, render the public homepage.
+  // Authenticated user routing is handled client-side in AuthRouteGuard
+  // (rendered inside the homepage via the NavBar auth state detection).
+  return <HomePage />;
 }

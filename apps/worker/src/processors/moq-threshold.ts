@@ -8,9 +8,9 @@
  * The underlying service function is idempotent — safe to call multiple times.
  */
 
-import { Worker } from "bullmq";
+import { Worker, type ConnectionOptions } from "bullmq";
 import { redis } from "../lib/redis";
-import { prisma } from "../../../../packages/database/src/client";
+import { prisma } from "@loocbooc/database";
 
 export const moqThresholdWorker = new Worker(
   "moq-threshold",
@@ -117,7 +117,7 @@ export const moqThresholdWorker = new Worker(
     };
   },
   {
-    connection: redis,
+    connection: redis as unknown as ConnectionOptions,
     concurrency: 10, // Can check multiple campaigns concurrently
     limiter: {
       max: 100,

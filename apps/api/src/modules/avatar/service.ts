@@ -12,7 +12,7 @@
  */
 
 import { prisma, Prisma } from "@loocbooc/database";
-import { enqueueJob, enqueueTasteEngineJob } from "../../lib/queues.js";
+import { enqueueTasteEngineJob } from "../../lib/queues.js";
 import {
   recommendFit,
   calculateBodyShape,
@@ -33,7 +33,6 @@ import type {
   UpdateAvatarInput,
   GetFitRecommendationInput,
   CreateSizeChartInput,
-  RecordTasteSignalInput,
 } from "./schema.js";
 
 // ─────────────────────────────────────────────
@@ -377,7 +376,7 @@ export async function getFitRecommendation(
         brand: "",
         category: brandChart.category,
         sizeSystem: brandChart.sizeSystem,
-        rows: brandChart.rows as import("./types.js").SizeChartRow[],
+        rows: brandChart.rows as unknown as import("./types.js").SizeChartRow[],
       };
     } else {
       // Fall back to a generic AU women's size chart
@@ -391,6 +390,15 @@ export async function getFitRecommendation(
   result.skuId = skuId;
 
   // Persist/update fit result
+  const fitNotesPayload = {
+    fitLabel: result.fitLabel,
+    alternativeSize: result.alternativeSize,
+    confidence: result.confidence,
+    measurementGaps: result.measurementGaps,
+    message: result.message,
+    sizeBreakdown: result.sizeBreakdown,
+  } as unknown as Prisma.InputJsonValue;
+
   await prisma.avatarFitResult.upsert({
     where: { avatarId_skuId: { avatarId, skuId } },
     create: {
@@ -398,26 +406,12 @@ export async function getFitRecommendation(
       skuId,
       fitScore: new Prisma.Decimal(result.fitScore.toFixed(2)),
       recommendedSize: result.recommendedSize,
-      fitNotes: {
-        fitLabel: result.fitLabel,
-        alternativeSize: result.alternativeSize,
-        confidence: result.confidence,
-        measurementGaps: result.measurementGaps,
-        message: result.message,
-        sizeBreakdown: result.sizeBreakdown,
-      },
+      fitNotes: fitNotesPayload,
     },
     update: {
       fitScore: new Prisma.Decimal(result.fitScore.toFixed(2)),
       recommendedSize: result.recommendedSize,
-      fitNotes: {
-        fitLabel: result.fitLabel,
-        alternativeSize: result.alternativeSize,
-        confidence: result.confidence,
-        measurementGaps: result.measurementGaps,
-        message: result.message,
-        sizeBreakdown: result.sizeBreakdown,
-      },
+      fitNotes: fitNotesPayload,
     },
   });
 
@@ -461,7 +455,7 @@ export async function createSizeChart(input: CreateSizeChartInput): Promise<Stor
     name: chart.name,
     category: chart.category,
     sizeSystem: chart.sizeSystem,
-    rows: chart.rows as import("./types.js").SizeChartRow[],
+    rows: chart.rows as unknown as import("./types.js").SizeChartRow[],
     createdAt: chart.createdAt.toISOString(),
   };
 }
@@ -487,7 +481,7 @@ export async function getBrandSizeCharts(brandId: string): Promise<StoredSizeCha
     name: c.name,
     category: c.category,
     sizeSystem: c.sizeSystem,
-    rows: c.rows as import("./types.js").SizeChartRow[],
+    rows: c.rows as unknown as import("./types.js").SizeChartRow[],
     createdAt: c.createdAt.toISOString(),
   }));
 }
@@ -499,7 +493,7 @@ async function getSizeChartById(chartId: string) {
     brand: "",
     category: chart.category,
     sizeSystem: chart.sizeSystem,
-    rows: chart.rows as import("./types.js").SizeChartRow[],
+    rows: chart.rows as unknown as import("./types.js").SizeChartRow[],
   };
 }
 

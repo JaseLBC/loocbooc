@@ -10,11 +10,24 @@
  * manufacturer-only features.
  */
 
-import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   Brand,
   BrandMember,
 } from "@loocbooc/types";
+
+/**
+ * Minimal interface for Supabase admin client.
+ * We only need updateUserById — keeps this module decoupled from the full SDK.
+ */
+interface SupabaseAdminClient {
+  auth: {
+    admin: {
+      updateUserById: (userId: string, attrs: { app_metadata: Record<string, unknown> }) => Promise<{ error: Error | null }>;
+    };
+  };
+}
+
+type SupabaseClient = SupabaseAdminClient;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

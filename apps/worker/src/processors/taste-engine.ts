@@ -18,9 +18,9 @@
  * - Fashion Intelligence aggregate reports (cross-user analysis)
  */
 
-import { Worker } from "bullmq";
+import { Worker, type ConnectionOptions } from "bullmq";
 import { redis } from "../lib/redis";
-import { prisma, Prisma } from "../../../../packages/database/src/client";
+import { prisma, Prisma, Decimal } from "../lib/database";
 
 // ─────────────────────────────────────────────
 // Signal type weights
@@ -250,7 +250,7 @@ async function processUserSignals(userId: string, fullRebuild = false): Promise<
       confirmedSizeAu,
       signalCount: totalSignalCount,
       signalsSinceRebuild: 0,
-      modelQuality: new Prisma.Decimal(modelQuality.toFixed(2)),
+      modelQuality: new Decimal(modelQuality.toFixed(2)),
       lastBuiltAt: new Date(),
     },
     update: {
@@ -266,7 +266,7 @@ async function processUserSignals(userId: string, fullRebuild = false): Promise<
       confirmedSizeAu: confirmedSizeAu ?? existing?.confirmedSizeAu,
       signalCount: totalSignalCount,
       signalsSinceRebuild: 0,
-      modelQuality: new Prisma.Decimal(modelQuality.toFixed(2)),
+      modelQuality: new Decimal(modelQuality.toFixed(2)),
       lastBuiltAt: new Date(),
     },
   });
@@ -319,7 +319,7 @@ export const tasteEngineWorker = new Worker<TasteEngineJobData>(
     return { userId, fullRebuild, processedAt: new Date().toISOString() };
   },
   {
-    connection: redis,
+    connection: redis as unknown as ConnectionOptions,
     concurrency: 5,
     // Don't overload the DB with too many concurrent signal-processing runs
     limiter: {

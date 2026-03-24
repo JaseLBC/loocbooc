@@ -4,7 +4,12 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "module": "commonjs",
-    "moduleResolution": "node"
+    "moduleResolution": "node",
+    // Disable exactOptionalPropertyTypes for API — causes false positives with Prisma's JSON types
+    // The Prisma client generates types where optional fields can be `T | undefined` which conflicts
+    // with Prisma's InputJsonValue expecting exactly `T | null` but not `undefined`.
+    // This is a known Prisma + exactOptionalPropertyTypes friction point.
+    "exactOptionalPropertyTypes": false
   },
   "include": ["src/**/*"]
 }

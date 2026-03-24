@@ -90,23 +90,20 @@ async function resolveBrandId(userId: string, userRole: string): Promise<string 
 
 export async function garmentRoutes(app: FastifyInstance): Promise<void> {
   // ── List garments ────────────────────────────────────────────────────────────
-  app.get("/", {
+  app.get<{
+    Querystring: {
+      search?: string | undefined;
+      category?: string | undefined;
+      status?: string | undefined;
+      season?: string | undefined;
+      sortBy?: string | undefined;
+      sortOrder?: string | undefined;
+      page?: string | undefined;
+      limit?: string | undefined;
+    };
+  }>("/", {
     preHandler: [requireAuth],
-  }, async (
-    request: FastifyRequest<{
-      Querystring: {
-        search?: string;
-        category?: string;
-        status?: string;
-        season?: string;
-        sortBy?: string;
-        sortOrder?: string;
-        page?: string;
-        limit?: string;
-      };
-    }>,
-    reply: FastifyReply,
-  ) => {
+  }, async (request, reply) => {
     try {
       const user = request.user!;
       const brandId = await resolveBrandId(user.id, user.role);
@@ -162,12 +159,9 @@ export async function garmentRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── Get garment ──────────────────────────────────────────────────────────────
-  app.get("/:ugi", {
+  app.get<{ Params: { ugi: string } }>("/:ugi", {
     preHandler: [requireAuth],
-  }, async (
-    request: FastifyRequest<{ Params: { ugi: string } }>,
-    reply: FastifyReply,
-  ) => {
+  }, async (request, reply) => {
     try {
       const user = request.user!;
       const brandId = await resolveBrandId(user.id, user.role);
@@ -191,12 +185,9 @@ export async function garmentRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── Update garment ───────────────────────────────────────────────────────────
-  app.patch("/:ugi", {
+  app.patch<{ Params: { ugi: string } }>("/:ugi", {
     preHandler: [requireAuth],
-  }, async (
-    request: FastifyRequest<{ Params: { ugi: string } }>,
-    reply: FastifyReply,
-  ) => {
+  }, async (request, reply) => {
     try {
       const user = request.user!;
       const brandId = await resolveBrandId(user.id, user.role);
@@ -222,12 +213,9 @@ export async function garmentRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── Delete garment ───────────────────────────────────────────────────────────
-  app.delete("/:ugi", {
+  app.delete<{ Params: { ugi: string } }>("/:ugi", {
     preHandler: [requireAuth],
-  }, async (
-    request: FastifyRequest<{ Params: { ugi: string } }>,
-    reply: FastifyReply,
-  ) => {
+  }, async (request, reply) => {
     try {
       const user = request.user!;
       const brandId = await resolveBrandId(user.id, user.role);
@@ -249,12 +237,9 @@ export async function garmentRoutes(app: FastifyInstance): Promise<void> {
   // Called by the frontend after a successful direct-to-S3 upload.
   // Body can be JSON (from API caller) or multipart/form-data (from wizard).
   // For multipart, we save files to a temp path then record the upload.
-  app.post("/:ugi/files", {
+  app.post<{ Params: { ugi: string } }>("/:ugi/files", {
     preHandler: [requireAuth],
-  }, async (
-    request: FastifyRequest<{ Params: { ugi: string } }>,
-    reply: FastifyReply,
-  ) => {
+  }, async (request, reply) => {
     try {
       const user = request.user!;
       const brandId = await resolveBrandId(user.id, user.role);
@@ -322,12 +307,9 @@ export async function garmentRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── Scan / pipeline status ───────────────────────────────────────────────────
-  app.get("/:ugi/scan/status", {
+  app.get<{ Params: { ugi: string } }>("/:ugi/scan/status", {
     preHandler: [requireAuth],
-  }, async (
-    request: FastifyRequest<{ Params: { ugi: string } }>,
-    reply: FastifyReply,
-  ) => {
+  }, async (request, reply) => {
     try {
       const user = request.user!;
       const brandId = await resolveBrandId(user.id, user.role);

@@ -64,7 +64,9 @@ export async function getPlatformStats(): Promise<PlatformStats> {
     backingStats,
     newUserCount,
     last24hBackings,
-    manufacturerStats,
+    verifiedManufacturers,
+    pendingManufacturers,
+    totalManufacturers,
   ] = await Promise.all([
     // Campaigns by status
     prisma.campaign.groupBy({
@@ -95,11 +97,18 @@ export async function getPlatformStats(): Promise<PlatformStats> {
       where: { createdAt: { gte: last24h } },
     }),
 
-    // Manufacturer verification stats
-    prisma.manufacturerProfile.groupBy({
-      by: ["verificationStatus"],
-      _count: { _all: true },
+    // Manufacturer verification stats — using isVerified field
+    prisma.manufacturerProfile.count({
+      where: { isVerified: true },
     }),
+
+    // Pending = not verified and not featured (implicit pending state)
+    prisma.manufacturerProfile.count({
+      where: { isVerified: false },
+    }),
+
+    // Total manufacturers
+    prisma.manufacturerProfile.count(),
   ]);
 
   // Parse campaign stats
@@ -114,12 +123,6 @@ export async function getPlatformStats(): Promise<PlatformStats> {
     userByRole[row.role] = row._count._all;
   }
 
-  // Parse manufacturer stats
-  const mfrByStatus: Record<string, number> = {};
-  for (const row of manufacturerStats) {
-    mfrByStatus[row.verificationStatus ?? "unverified"] = row._count._all;
-  }
-
   // Total backings across all statuses
   const allBackingStats = await prisma.backing.groupBy({
     by: ["status"],
@@ -130,7 +133,7 @@ export async function getPlatformStats(): Promise<PlatformStats> {
   let totalRevenueCents = 0;
   let refundedCount = 0;
   let fulfilledCount = 0;
-  let activeBackings = backingStats._count._all;
+  const activeBackings = backingStats._count._all;
   for (const row of allBackingStats) {
     totalBackings += row._count._all;
     totalRevenueCents += Number(row._sum.depositCents ?? 0);
@@ -152,11 +155,11 @@ export async function getPlatformStats(): Promise<PlatformStats> {
     },
     users: {
       total: Object.values(userByRole).reduce((a, b) => a + b, 0),
-      brands: (userByRole["brand_owner"] ?? 0) + (userByRole["brand_member"] ?? 0),
-      manufacturers: userByRole["manufacturer"] ?? 0,
-      consumers: userByRole["consumer"] ?? 0,
-      admins: userByRole["platform_admin"] ?? 0,
-      newLast7Days: newUserCount,
+      brands: (userByRole["BRAND_OWNER"] ?? 0) + (userByRole["BRAND_MEMBER"] ?? 0),
+      manufacturers: userByRole["MANUFACTURER"] ?? 0,
+      consumers: userByRole["CONSUMER"] ?? 0,
+      admins: userByRole["PLATFORM_ADMIN"] ?? 0,
+    newLast7Days: newUserCount,
     },
     backings: {
       total: totalBackings,
@@ -167,9 +170,9 @@ export async function getPlatformStats(): Promise<PlatformStats> {
       last24hCount: last24hBackings,
     },
     manufacturers: {
-      total: Object.values(mfrByStatus).reduce((a, b) => a + b, 0),
-      verified: mfrByStatus["verified"] ?? 0,
-      pendingVerification: mfrByStatus["pending"] ?? 0,
+      total: totalManufacturers,
+      verified: verifiedManufacturers,
+      pendingVerification: pendingManufacturers,
     },
   };
 }
@@ -211,18 +214,23 @@ export async function listCampaignsAdmin(opts: {
   const { page, limit, status, search, flaggedOnly } = opts;
   const skip = (page - 1) * limit;
 
-  const where = {
-    ...(status ? { status } : {}),
-    ...(flaggedOnly ? { flagged: true } : {}),
-    ...(search
-      ? {
-          OR: [
-            { title: { contains: search, mode: "insensitive" as const } },
-            { brand: { name: { contains: search, mode: "insensitive" as const } } },
-          ],
-        }
-      : {}),
-  };
+  // Build where clause using Prisma's WhereInput structure
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const where: any = {};
+
+  if (status) {
+    where.status = status;
+  }
+  if (flaggedOnly) {
+    // Flag state is stored in metadata JSON
+    where.metadata = { path: ["adminFlagged"], equals: true };
+  }
+  if (search) {
+    where.OR = [
+      { title: { contains: search, mode: "insensitive" } },
+      { brand: { name: { contains: search, mode: "insensitive" } } },
+    ];
+  }
 
   const [rows, total] = await Promise.all([
     prisma.campaign.findMany({
@@ -238,23 +246,26 @@ export async function listCampaignsAdmin(opts: {
   ]);
 
   return {
-    data: rows.map((c) => ({
-      id: c.id,
-      title: c.title,
-      status: c.status,
-      brandName: c.brand.name,
-      brandId: c.brand.id,
-      currentBackingCount: c.currentBackingCount,
-      moq: c.moq,
-      moqReached: c.moqReached,
-      backerPriceCents: c.backerPriceCents,
-      currency: c.currency,
-      campaignStart: c.campaignStart,
-      campaignEnd: c.campaignEnd,
-      createdAt: c.createdAt,
-      flagged: (c as unknown as { flagged?: boolean }).flagged ?? false,
-      flagReason: (c as unknown as { flagReason?: string | null }).flagReason ?? null,
-    })),
+    data: rows.map((c) => {
+      const meta = (c.metadata as Record<string, unknown>) ?? {};
+      return {
+        id: c.id,
+        title: c.title,
+        status: c.status,
+        brandName: c.brand.name,
+        brandId: c.brand.id,
+        currentBackingCount: c.currentBackingCount,
+        moq: c.moq,
+        moqReached: c.moqReached,
+        backerPriceCents: c.backerPriceCents,
+        currency: c.currency,
+        campaignStart: c.campaignStart,
+        campaignEnd: c.campaignEnd,
+        createdAt: c.createdAt,
+        flagged: meta["adminFlagged"] === true,
+        flagReason: (meta["adminFlagReason"] as string | null) ?? null,
+      };
+    }),
     meta: {
       total,
       page,
@@ -269,14 +280,21 @@ export async function adminFlagCampaign(
   flagged: boolean,
   reason: string | null,
 ): Promise<void> {
+  // Store flag state in the metadata JSON field since Campaign doesn't have dedicated flag columns
+  const campaign = await prisma.campaign.findUnique({ where: { id: campaignId } });
+  if (!campaign) throw new Error("Campaign not found");
+
+  const currentMetadata = (campaign.metadata as Record<string, unknown>) ?? {};
+  const newMetadata = {
+    ...currentMetadata,
+    adminFlagged: flagged,
+    adminFlagReason: reason,
+    adminFlaggedAt: flagged ? new Date().toISOString() : null,
+  };
+
   await prisma.campaign.update({
     where: { id: campaignId },
-    data: {
-      // @ts-expect-error — flagged field may not be in generated types yet
-      flagged,
-      // @ts-expect-error
-      flagReason: reason,
-    },
+    data: { metadata: newMetadata },
   });
 }
 
@@ -302,26 +320,18 @@ export interface PendingManufacturer {
   specialisations: string[];
   certifications: string[];
   priceTier: string;
-  verificationStatus: string;
-  ownerEmail: string | null;
-  ownerName: string | null;
+  isVerified: boolean;
+  manufacturerId: string;
   moqMin: number;
-  createdAt: Date;
-  submittedAt: Date | null;
 }
 
 export async function listPendingManufacturers(): Promise<PendingManufacturer[]> {
+  // Pending = not yet verified
   const profiles = await prisma.manufacturerProfile.findMany({
     where: {
-      OR: [
-        { verificationStatus: "pending" },
-        { verificationStatus: "under_review" },
-      ],
+      isVerified: false,
     },
-    orderBy: { createdAt: "asc" },
-    include: {
-      user: { select: { email: true, fullName: true } },
-    },
+    orderBy: { moqMin: "asc" }, // Show smallest MOQ first (more accessible to brands)
   });
 
   return profiles.map((p) => ({
@@ -329,41 +339,36 @@ export async function listPendingManufacturers(): Promise<PendingManufacturer[]>
     displayName: p.displayName,
     country: p.country,
     city: p.city,
-    specialisations: p.specialisations ?? [],
-    certifications: p.certifications ?? [],
+    specialisations: p.specialisations,
+    certifications: p.certifications,
     priceTier: p.priceTier,
-    verificationStatus: p.verificationStatus ?? "pending",
-    ownerEmail: p.user?.email ?? null,
-    ownerName: p.user?.fullName ?? null,
+    isVerified: p.isVerified,
+    manufacturerId: p.manufacturerId,
     moqMin: p.moqMin,
-    createdAt: p.createdAt,
-    submittedAt: (p as unknown as { submittedAt?: Date | null }).submittedAt ?? null,
   }));
 }
 
-export async function approveManufacturer(manufacturerId: string): Promise<void> {
+export async function approveManufacturer(profileId: string): Promise<void> {
   await prisma.manufacturerProfile.update({
-    where: { id: manufacturerId },
+    where: { id: profileId },
     data: {
-      verificationStatus: "verified",
       isVerified: true,
-      // @ts-expect-error — verifiedAt may not be in generated types
       verifiedAt: new Date(),
     },
   });
 }
 
 export async function rejectManufacturer(
-  manufacturerId: string,
-  reason: string,
+  profileId: string,
+  _reason: string,
 ): Promise<void> {
+  // For now, just keep them unverified. In future, we could add a rejection reason field
+  // or send an email notification. The reason is logged by the caller.
   await prisma.manufacturerProfile.update({
-    where: { id: manufacturerId },
+    where: { id: profileId },
     data: {
-      verificationStatus: "rejected",
       isVerified: false,
-      // @ts-expect-error
-      rejectionReason: reason,
+      verifiedAt: null,
     },
   });
 }
@@ -377,9 +382,9 @@ export interface AdminUserRow {
   email: string;
   fullName: string | null;
   role: string;
-  suspended: boolean;
+  status: string;
   createdAt: Date;
-  lastSignInAt: Date | null;
+  lastLoginAt: Date | null;
   brandName: string | null;
 }
 
@@ -397,17 +402,19 @@ export async function listUsersAdmin(opts: {
   const { page, limit, role, search } = opts;
   const skip = (page - 1) * limit;
 
-  const where = {
-    ...(role ? { role } : {}),
-    ...(search
-      ? {
-          OR: [
-            { email: { contains: search, mode: "insensitive" as const } },
-            { fullName: { contains: search, mode: "insensitive" as const } },
-          ],
-        }
-      : {}),
-  };
+  // Build where clause using any to bypass exactOptionalPropertyTypes
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const where: any = {};
+
+  if (role) {
+    where.role = role;
+  }
+  if (search) {
+    where.OR = [
+      { email: { contains: search, mode: "insensitive" } },
+      { fullName: { contains: search, mode: "insensitive" } },
+    ];
+  }
 
   const [rows, total] = await Promise.all([
     prisma.user.findMany({
@@ -416,10 +423,7 @@ export async function listUsersAdmin(opts: {
       take: limit,
       orderBy: { createdAt: "desc" },
       include: {
-        brandMembers: {
-          include: { brand: { select: { name: true } } },
-          take: 1,
-        },
+        ownedBrands: { select: { name: true }, take: 1 },
       },
     }),
     prisma.user.count({ where }),
@@ -431,10 +435,10 @@ export async function listUsersAdmin(opts: {
       email: u.email,
       fullName: u.fullName,
       role: u.role,
-      suspended: (u as unknown as { suspended?: boolean }).suspended ?? false,
+      status: u.status,
       createdAt: u.createdAt,
-      lastSignInAt: (u as unknown as { lastSignInAt?: Date | null }).lastSignInAt ?? null,
-      brandName: u.brandMembers[0]?.brand?.name ?? null,
+      lastLoginAt: u.lastLoginAt,
+      brandName: u.ownedBrands[0]?.name ?? null,
     })),
     meta: {
       total,
@@ -449,8 +453,7 @@ export async function suspendUser(userId: string, suspended: boolean): Promise<v
   await prisma.user.update({
     where: { id: userId },
     data: {
-      // @ts-expect-error — suspended field may not be in generated types
-      suspended,
+      status: suspended ? "suspended" : "active",
     },
   });
 }

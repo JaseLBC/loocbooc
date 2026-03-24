@@ -1,0 +1,24 @@
+{
+  "name": "loocbooc-api",
+  "version": "0.1.0",
+  "description": "Loocbooc API - Virtual try-on backend",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@shopify/shopify-api": "^9.0.0",
+    "@supabase/supabase-js": "^2.39.0",
+    "fastify": "^4.25.0",
+    "@fastify/cors": "^8.5.0",
+    "@fastify/cookie": "^9.2.0",
+    "@fastify/session": "^10.7.0",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0"
+  }
+}

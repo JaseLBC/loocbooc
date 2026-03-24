@@ -9,6 +9,7 @@ import { shopifySyncWorker } from "./processors/shopify-sync";
 import { emailNotificationWorker } from "./processors/email-notification";
 import { captureRemainingPaymentsWorker } from "./processors/capture-remaining-payments";
 import { tasteEngineWorker } from "./processors/taste-engine";
+import { notificationWorker } from "./processors/notifications";
 import { startCronJobs } from "./queues/cron";
 
 async function start() {
@@ -21,6 +22,7 @@ async function start() {
     emailNotificationWorker.name,
     captureRemainingPaymentsWorker.name,
     tasteEngineWorker.name,
+    notificationWorker.name,
   ].join(", "));
 
   // Start scheduled cron jobs
@@ -38,6 +40,7 @@ process.on("SIGTERM", async () => {
     emailNotificationWorker.close(),
     captureRemainingPaymentsWorker.close(),
     tasteEngineWorker.close(),
+    notificationWorker.close(),
   ]);
   process.exit(0);
 });
@@ -50,6 +53,7 @@ process.on("SIGINT", async () => {
     emailNotificationWorker.close(),
     captureRemainingPaymentsWorker.close(),
     tasteEngineWorker.close(),
+    notificationWorker.close(),
   ]);
   process.exit(0);
 });

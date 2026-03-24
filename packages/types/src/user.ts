@@ -29,7 +29,7 @@ export interface CreateUserInput {
   email: string;
   fullName?: string;
   displayName?: string;
-  role?: UserRole;
+  role?: UserRoleType;
   phone?: string;
 }
 

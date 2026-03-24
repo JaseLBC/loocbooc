@@ -4,5 +4,27 @@
  */
 
 export { prisma, default } from "./client";
-export { Prisma } from "../generated/client";
-export type { PrismaClient } from "../generated/client";
+// Re-export Prisma namespace and types
+export * from "../generated/client";
+export { Prisma, PrismaClient } from "../generated/client";
+
+// Re-export model types for use in services
+export type {
+  User,
+  Brand,
+  BrandMember,
+  Garment,
+  SKU,
+  Manufacturer,
+  Avatar,
+  AvatarFitResult,
+  Campaign,
+  Backing,
+  CampaignSizeBreak,
+  CampaignEvent,
+  Order,
+  OrderItem,
+  Stylist,
+  StylistPortfolioItem,
+  StyleBrief,
+} from "../generated/client";

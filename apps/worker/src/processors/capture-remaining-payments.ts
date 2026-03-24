@@ -10,10 +10,10 @@
  * It's ready for v1.1 when the deposit model launches.
  */
 
-import { Worker } from "bullmq";
+import { Worker, type ConnectionOptions } from "bullmq";
 import Stripe from "stripe";
 import { redis } from "../lib/redis";
-import { prisma } from "../../../../packages/database/src/client";
+import { prisma } from "@loocbooc/database";
 
 const stripe = new Stripe(process.env["STRIPE_SECRET_KEY"] ?? "", {
   apiVersion: "2023-10-16",
@@ -67,7 +67,7 @@ export const captureRemainingPaymentsWorker = new Worker(
     throw new Error("capture-remaining-payments job requires either campaignId or backingId");
   },
   {
-    connection: redis,
+    connection: redis as unknown as ConnectionOptions,
     concurrency: 5,
     limiter: {
       max: 20,
@@ -79,7 +79,9 @@ export const captureRemainingPaymentsWorker = new Worker(
 async function captureRemainingForBacking(backingId: string, attemptsMade: number): Promise<void> {
   const backing = await prisma.backing.findUnique({
     where: { id: backingId },
-    include: { user: { select: { id: true, stripeCustomerId: true } } },
+    include: {
+      user: { select: { id: true, stripeCustomerId: true } },
+    },
   });
 
   if (!backing || backing.finalPaymentStatus === "succeeded" || backing.status !== "active") {
@@ -88,18 +90,22 @@ async function captureRemainingForBacking(backingId: string, attemptsMade: numbe
 
   try {
     // Create a new PaymentIntent for the remaining balance
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: backing.remainingCents,
-      currency: backing.currency.toLowerCase(),
-      customer: backing.user.stripeCustomerId ?? undefined,
-      confirm: true,
-      automatic_payment_methods: { enabled: true, allow_redirects: "never" },
-      metadata: {
-        backingId,
-        type: "remaining_payment",
+    const paymentIntent = await stripe.paymentIntents.create(
+      {
+        amount: backing.remainingCents,
+        currency: backing.currency.toLowerCase(),
+        customer: backing.user.stripeCustomerId ?? undefined,
+        confirm: true,
+        automatic_payment_methods: { enabled: true, allow_redirects: "never" },
+        metadata: {
+          backingId,
+          type: "remaining_payment",
+        },
       },
-      idempotency_key: `remaining-${backingId}-${attemptsMade}`,
-    });
+      {
+        idempotencyKey: `remaining-${backingId}-${attemptsMade}`,
+      },
+    );
 
     await prisma.backing.update({
       where: { id: backingId },

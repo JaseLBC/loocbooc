@@ -105,13 +105,10 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
 
   // ─── GET /api/v1/admin/activity ─────────────
 
-  fastify.get(
+  fastify.get<{ Querystring: { limit?: string } }>(
     "/activity",
     guard,
-    async (
-      request: FastifyRequest<{ Querystring: { limit?: string } }>,
-      reply: FastifyReply,
-    ) => {
+    async (request, reply) => {
       const limit = parseLimit(request.query.limit, 50, 20);
       try {
         const activity = await adminService.getRecentActivity(limit);
@@ -125,13 +122,10 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
 
   // ─── GET /api/v1/admin/campaigns ────────────
 
-  fastify.get(
+  fastify.get<{ Querystring: CampaignListQuery }>(
     "/campaigns",
     guard,
-    async (
-      request: FastifyRequest<{ Querystring: CampaignListQuery }>,
-      reply: FastifyReply,
-    ) => {
+    async (request, reply) => {
       const q = request.query;
       const page = parsePage(q.page);
       const limit = parseLimit(q.limit);
@@ -140,8 +134,8 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
         const result = await adminService.listCampaignsAdmin({
           page,
           limit,
-          status: q.status,
-          search: q.search,
+          ...(q.status ? { status: q.status } : {}),
+          ...(q.search ? { search: q.search } : {}),
           flaggedOnly: q.flaggedOnly === "true",
         });
         return reply.send(result);
@@ -154,13 +148,10 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
 
   // ─── PATCH /api/v1/admin/campaigns/:id/flag ─
 
-  fastify.patch(
+  fastify.patch<{ Params: { id: string }; Body: FlagBody }>(
     "/campaigns/:id/flag",
     guard,
-    async (
-      request: FastifyRequest<{ Params: { id: string }; Body: FlagBody }>,
-      reply: FastifyReply,
-    ) => {
+    async (request, reply) => {
       const { id } = request.params;
       const { flagged, reason } = request.body ?? {};
 
@@ -180,13 +171,10 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
 
   // ─── PATCH /api/v1/admin/campaigns/:id/force-expire
 
-  fastify.patch(
+  fastify.patch<{ Params: { id: string } }>(
     "/campaigns/:id/force-expire",
     guard,
-    async (
-      request: FastifyRequest<{ Params: { id: string } }>,
-      reply: FastifyReply,
-    ) => {
+    async (request, reply) => {
       const { id } = request.params;
       try {
         await adminService.adminForceExpireCampaign(id);
@@ -219,13 +207,10 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
 
   // ─── PATCH /api/v1/admin/manufacturers/:id/approve
 
-  fastify.patch(
+  fastify.patch<{ Params: { id: string } }>(
     "/manufacturers/:id/approve",
     guard,
-    async (
-      request: FastifyRequest<{ Params: { id: string } }>,
-      reply: FastifyReply,
-    ) => {
+    async (request, reply) => {
       const { id } = request.params;
       try {
         await adminService.approveManufacturer(id);
@@ -239,13 +224,10 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
 
   // ─── PATCH /api/v1/admin/manufacturers/:id/reject
 
-  fastify.patch(
+  fastify.patch<{ Params: { id: string }; Body: RejectBody }>(
     "/manufacturers/:id/reject",
     guard,
-    async (
-      request: FastifyRequest<{ Params: { id: string }; Body: RejectBody }>,
-      reply: FastifyReply,
-    ) => {
+    async (request, reply) => {
       const { id } = request.params;
       const { reason } = request.body ?? {};
 
@@ -265,13 +247,10 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
 
   // ─── GET /api/v1/admin/users ────────────────
 
-  fastify.get(
+  fastify.get<{ Querystring: UserListQuery }>(
     "/users",
     guard,
-    async (
-      request: FastifyRequest<{ Querystring: UserListQuery }>,
-      reply: FastifyReply,
-    ) => {
+    async (request, reply) => {
       const q = request.query;
       const page = parsePage(q.page);
       const limit = parseLimit(q.limit);
@@ -280,8 +259,8 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
         const result = await adminService.listUsersAdmin({
           page,
           limit,
-          role: q.role,
-          search: q.search,
+          ...(q.role ? { role: q.role } : {}),
+          ...(q.search ? { search: q.search } : {}),
         });
         return reply.send(result);
       } catch (err) {
@@ -293,13 +272,10 @@ export async function adminRoutes(fastify: FastifyInstance): Promise<void> {
 
   // ─── PATCH /api/v1/admin/users/:id/suspend ──
 
-  fastify.patch(
+  fastify.patch<{ Params: { id: string }; Body: SuspendBody }>(
     "/users/:id/suspend",
     guard,
-    async (
-      request: FastifyRequest<{ Params: { id: string }; Body: SuspendBody }>,
-      reply: FastifyReply,
-    ) => {
+    async (request, reply) => {
       const { id } = request.params;
       const { suspended } = request.body ?? {};
 

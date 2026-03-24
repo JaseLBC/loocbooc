@@ -47,28 +47,32 @@ export class ServiceError extends Error {
 // Metadata types (stored in garment.metadata)
 // ─────────────────────────────────────────────
 
+/**
+ * Internal metadata type for garments. Using Partial<> and explicit undefined
+ * to satisfy exactOptionalPropertyTypes.
+ */
 interface GarmentMetadata {
   ugi: string;
-  fabricComposition?: string;
-  fabricPhysics?: FabricPhysics;
-  measurements?: GarmentMeasurements;
-  uploadMethod?: string;
-  pipeline?: {
+  fabricComposition?: string | undefined;
+  fabricPhysics?: FabricPhysics | undefined;
+  measurements?: Partial<GarmentMeasurements> | undefined;
+  uploadMethod?: "clo3d" | "measurements" | "pattern" | "photos" | undefined;
+  pipeline: {
     stages: PipelineStage[];
     status: string;     // 'idle' | 'running' | 'complete' | 'error'
-    startedAt?: string;
-    completedAt?: string;
-    errorMessage?: string;
-    estimatedSecondsRemaining?: number;
+    startedAt?: string | undefined;
+    completedAt?: string | undefined;
+    errorMessage?: string | undefined;
+    estimatedSecondsRemaining?: number | undefined;
   };
-  assets?: {
-    thumbnailUrl?: string;
-    modelUrl?: string;
-    usdzUrl?: string;
-    files?: Array<{ name: string; size: number; type: string; uploadedAt: string }>;
+  assets: {
+    thumbnailUrl?: string | undefined;
+    modelUrl?: string | undefined;
+    usdzUrl?: string | undefined;
+    files?: Array<{ name: string; size: number; type: string; uploadedAt: string }> | undefined;
   };
-  tryOnCount?: number;
-  publicStatus?: string; // the frontend-facing status string
+  tryOnCount: number;
+  publicStatus: string; // the frontend-facing status string
 }
 
 // ─────────────────────────────────────────────
@@ -78,7 +82,13 @@ interface GarmentMetadata {
 function getMetadata(garment: { metadata: Prisma.JsonValue }): GarmentMetadata {
   const raw = garment.metadata as Record<string, unknown> | null;
   if (!raw || typeof raw !== "object") {
-    return { ugi: generateUGI() };
+    return {
+      ugi: generateUGI(),
+      pipeline: { stages: [], status: "idle" },
+      assets: {},
+      tryOnCount: 0,
+      publicStatus: "draft",
+    };
   }
   return raw as unknown as GarmentMetadata;
 }
@@ -543,8 +553,12 @@ export async function recordFileUpload(
   const updatedMeta: GarmentMetadata = {
     ...meta,
     assets: { ...assets, files },
-    pipeline,
-    publicStatus: shouldStartPipeline ? "processing" : meta.publicStatus,
+    pipeline: pipeline as GarmentMetadata["pipeline"],
+    ...(shouldStartPipeline
+      ? { publicStatus: "processing" }
+      : meta.publicStatus !== undefined
+      ? { publicStatus: meta.publicStatus }
+      : {}),
   };
 
   const updated = await prisma.garment.update({
@@ -605,8 +619,8 @@ export async function getScanStatus(
         assets: allComplete
           ? {
               ...meta.assets,
-              // If no model URL yet (photos path), generate a placeholder
-              modelUrl: meta.assets?.modelUrl ?? null,
+              // If no model URL yet (photos path), keep undefined
+              modelUrl: meta.assets?.modelUrl,
             }
           : meta.assets,
       };
@@ -624,7 +638,7 @@ export async function getScanStatus(
         status: allComplete ? "active" : "error",
         stages,
         estimatedSecondsRemaining: 0,
-        errorMessage: hasError ? "Processing failed. Please re-upload your files." : undefined,
+        ...(hasError && { errorMessage: "Processing failed. Please re-upload your files." }),
       };
     }
 
@@ -778,20 +792,22 @@ function simulatePipelineProgress(
   const completedUpTo = Math.floor(progress * stageCount);
   const currentStageIndex = completedUpTo;
 
-  return stages.map((stage, i) => {
+  return stages.map((stage, i): PipelineStage => {
     if (i < currentStageIndex) {
       return { ...stage, status: "complete" as const, progress: 100 };
     }
     if (i === currentStageIndex && progress < 1) {
       const stageProgress = ((progress * stageCount) - i) * 100;
+      const detail = getStageDetail(stage.id, stageProgress);
       return {
         ...stage,
         status: "running" as const,
         progress: Math.round(stageProgress),
-        detail: getStageDetail(stage.id, stageProgress),
+        ...(detail !== undefined && { detail }),
       };
     }
-    return { ...stage, status: "pending" as const };
+    const { progress: _p, detail: _d, ...rest } = stage;
+    return { ...rest, status: "pending" as const };
   });
 }
 

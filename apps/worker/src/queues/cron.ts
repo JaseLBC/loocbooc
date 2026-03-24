@@ -8,11 +8,11 @@
  *    that haven't hit MOQ, triggering the refund flow
  */
 
-import { Queue } from "bullmq";
+import { Queue, type ConnectionOptions } from "bullmq";
 import { redis } from "../lib/redis";
 
-const moqThresholdQueue = new Queue("moq-threshold", { connection: redis });
-const emailNotificationQueue = new Queue("email-notification", { connection: redis });
+const moqThresholdQueue = new Queue("moq-threshold", { connection: redis as unknown as ConnectionOptions });
+const emailNotificationQueue = new Queue("email-notification", { connection: redis as unknown as ConnectionOptions });
 
 export async function startCronJobs(): Promise<void> {
   // MOQ safety-net: every 15 minutes
@@ -37,3 +37,6 @@ export async function startCronJobs(): Promise<void> {
 
   console.warn("[cron] Scheduled jobs registered: moq-safety-net (15min), expire-campaigns (1hr)");
 }
+
+// Export queues for direct access if needed
+export { moqThresholdQueue, emailNotificationQueue };

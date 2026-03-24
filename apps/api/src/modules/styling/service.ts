@@ -398,7 +398,7 @@ export async function createBrief(userId: string, input: CreateBriefInput): Prom
   });
 
   // Emit event — interested stylists can subscribe
-  await enqueueJob("brief-submitted", { briefId: brief.id });
+  await enqueueJob("taste-engine", "brief-submitted", { briefId: brief.id });
 
   return toBriefSummary(brief);
 }
@@ -654,7 +654,7 @@ export async function acceptBrief(briefId: string, stylistUserId: string): Promi
   });
 
   // Notify the consumer
-  await enqueueJob("brief-assigned", { briefId, stylistId: stylist.id });
+  await enqueueJob("taste-engine", "brief-assigned", { briefId, stylistId: stylist.id });
 
   return toBriefSummary({ ...updated, lookbook: null });
 }
@@ -894,7 +894,7 @@ export async function publishLookbook(briefId: string, stylistUserId: string): P
   });
 
   // Notify the consumer
-  await enqueueJob("lookbook-delivered", { briefId, lookbookId: lookbook.id });
+  await enqueueJob("taste-engine", "lookbook-delivered", { briefId, lookbookId: lookbook.id });
 
   return toLookbookSummary(
     { ...lookbook, status: "published", publishedAt: now, updatedAt: now },
@@ -940,7 +940,7 @@ export async function recordLookbookPurchase(
   const platformFeeCents = Math.round((item.priceCents * PLATFORM_FEE_PERCENT) / 100);
 
   // Queue Stripe Connect payout to stylist
-  await enqueueJob("stylist-commission-payout", {
+  await enqueueJob("email-notification", "stylist-commission-payout", {
     stylistStripeAccountId: item.lookbook.stylist.stripeAccountId,
     stylistId: item.lookbook.stylistId,
     lookbookItemId,

@@ -64,12 +64,9 @@ export async function tasteEngineRoutes(app: FastifyInstance): Promise<void> {
 
   // ── Personalised campaign feed ───────────────────────────────────────────
   // Returns active campaigns sorted by relevance to the user's taste profile.
-  app.get("/campaigns", {
+  app.get<{ Querystring: { limit?: string; offset?: string } }>("/campaigns", {
     preHandler: [requireAuth],
-  }, async (
-    request: FastifyRequest<{ Querystring: { limit?: string; offset?: string } }>,
-    reply: FastifyReply,
-  ) => {
+  }, async (request, reply) => {
     try {
       const userId = request.user!.id;
       const limit = Math.min(parseInt(request.query.limit ?? "20", 10), 50);
@@ -85,7 +82,16 @@ export async function tasteEngineRoutes(app: FastifyInstance): Promise<void> {
   // ── Record RLHF feedback ─────────────────────────────────────────────────
   // Called when the user explicitly thumbs up/down a recommendation,
   // or when they purchase an item that was recommended.
-  app.post("/feedback", {
+  app.post<{
+    Body: {
+      entityId: string;
+      entityType: string;
+      feedback: string;
+      context?: string;
+      recommendationId?: string;
+      payload?: Record<string, unknown>;
+    };
+  }>("/feedback", {
     preHandler: [requireAuth],
     schema: {
       body: {
@@ -102,19 +108,7 @@ export async function tasteEngineRoutes(app: FastifyInstance): Promise<void> {
         additionalProperties: false,
       },
     },
-  }, async (
-    request: FastifyRequest<{
-      Body: {
-        entityId: string;
-        entityType: string;
-        feedback: string;
-        context?: string;
-        recommendationId?: string;
-        payload?: Record<string, unknown>;
-      };
-    }>,
-    reply: FastifyReply,
-  ) => {
+  }, async (request, reply) => {
     try {
       const userId = request.user!.id;
       await recordRLHFFeedback(userId, request.body);

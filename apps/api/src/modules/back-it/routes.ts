@@ -40,6 +40,9 @@ import {
   markCampaignCompleted,
   createPaymentIntentForBacking,
   confirmBacking,
+  browseCampaigns,
+  getCampaignBySlug,
+  getConsumerBackings,
   ServiceError,
 } from "./service.js";
 import { requireAuth } from "../auth/guards.js";
@@ -160,12 +163,14 @@ export async function backItRoutes(app: FastifyInstance): Promise<void> {
 
   // ── POST /api/v1/back-it/campaigns/:id/cancel ───────────────────────────────
   // Cancel a campaign (pre-MOQ only). Brand member access verified in service.
+  // Expects { brandId } in request body for ownership verification.
   app.post("/back-it/campaigns/:id/cancel", { preHandler: [requireAuth] }, async (request, reply) => {
     try {
       const userId = request.user!.id;
       const { id } = CampaignParamsSchema.parse(request.params);
+      const { brandId } = z.object({ brandId: z.string().uuid() }).parse(request.body);
 
-      const campaign = await cancelCampaign(id, userId);
+      const campaign = await cancelCampaign(id, brandId, userId);
       return reply.send({ data: campaign });
     } catch (err) {
       return handleError(err, request, reply);
@@ -173,14 +178,13 @@ export async function backItRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── GET /api/v1/back-it/brands/:brandId/campaigns ───────────────────────────
-  // List all campaigns for a brand. Brand membership is verified in the service.
+  // List all campaigns for a brand. Brand membership is verified via auth guard.
   app.get("/back-it/brands/:brandId/campaigns", { preHandler: [requireAuth] }, async (request, reply) => {
     try {
-      const userId = request.user!.id;
       const { brandId } = BrandCampaignsParamsSchema.parse(request.params);
       const query = BrandCampaignsQuerySchema.parse(request.query);
 
-      const result = await listBrandCampaigns(brandId, userId, query);
+      const result = await listBrandCampaigns(brandId, query);
       return reply.send(result);
     } catch (err) {
       return handleError(err, request, reply);
@@ -303,6 +307,88 @@ export async function backItRoutes(app: FastifyInstance): Promise<void> {
       }
     },
   );
+
+  // ── GET /api/v1/campaigns ────────────────────────────────────────────────────
+  // Public consumer-facing campaign browse and search.
+  // Called by the Explore page (/explore) for discovery.
+  // No auth required — publicly browseable.
+  //
+  // Query params:
+  //   status   — campaign status (default: "active")
+  //   category — garment category filter (e.g. "dress", "top")
+  //   search   — text search on title/description
+  //   sort     — "newest" | "ending_soon" | "most_backed" | "percent_funded"
+  //   limit    — page size (max 50, default 24)
+  //   offset   — pagination offset (default 0)
+  app.get("/campaigns", async (request, reply) => {
+    try {
+      const querySchema = z.object({
+        status:   z.string().optional(),
+        category: z.string().optional(),
+        search:   z.string().max(200).optional(),
+        sort: z
+          .enum(["newest", "ending_soon", "most_backed", "percent_funded"])
+          .optional()
+          .default("newest"),
+        limit:  z.coerce.number().int().min(1).max(50).default(24),
+        offset: z.coerce.number().int().min(0).default(0),
+      });
+
+      const raw = querySchema.parse(request.query);
+      const result = await browseCampaigns({
+        status:   raw.status,
+        category: raw.category,
+        search:   raw.search,
+        sort:     raw.sort,
+        limit:    raw.limit,
+        offset:   raw.offset,
+      });
+      return reply.send(result);
+    } catch (err) {
+      return handleError(err, request, reply);
+    }
+  });
+
+  // ── GET /api/v1/campaigns/slug/:slug ─────────────────────────────────────────
+  // Get a single campaign by its public slug.
+  // Used by the consumer campaign page when loaded from a slug URL
+  // (e.g. /back/my-campaign-slug → fetches /api/v1/campaigns/slug/my-campaign-slug).
+  // Also used by the Shopify theme extension widget.
+  // No auth required — all non-draft campaigns are publicly visible.
+  app.get("/campaigns/slug/:slug", async (request, reply) => {
+    try {
+      const { slug } = z
+        .object({ slug: z.string().min(1).max(150) })
+        .parse(request.params);
+
+      const campaign = await getCampaignBySlug(slug);
+      return reply.send({ data: campaign });
+    } catch (err) {
+      return handleError(err, request, reply);
+    }
+  });
+
+  // ── GET /api/v1/users/me/backings ────────────────────────────────────────────
+  // Return the authenticated consumer's backing history.
+  // Ordered by most recent first. Includes campaign context for each backing.
+  //
+  // Query params:
+  //   limit  — page size (max 50, default 20)
+  //   offset — pagination offset (default 0)
+  app.get("/users/me/backings", { preHandler: [requireAuth] }, async (request, reply) => {
+    try {
+      const userId = request.user!.id;
+      const query = z.object({
+        limit:  z.coerce.number().int().min(1).max(50).default(20),
+        offset: z.coerce.number().int().min(0).default(0),
+      }).parse(request.query);
+
+      const result = await getConsumerBackings(userId, query.limit, query.offset);
+      return reply.send(result);
+    } catch (err) {
+      return handleError(err, request, reply);
+    }
+  });
 
   // ── POST /api/v1/internal/campaigns/check-moq ───────────────────────────────
   // Internal safety-net: checks all campaigns for missed MOQ triggers.

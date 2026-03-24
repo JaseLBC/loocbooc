@@ -357,7 +357,7 @@ export async function syncProductFromShopify(
   return {
     shopifyProductId: product.id,
     title: product.title,
-    descriptionHtml: product.descriptionHtml,
+    descriptionHtml: product.description,
     coverImageUrl,
     galleryUrls,
     variants,
@@ -694,7 +694,9 @@ export function decryptAccessToken(ciphertext: string): string {
     throw new Error("Invalid encrypted token format");
   }
 
-  const [ivB64, authTagB64, encryptedB64] = parts;
+  const ivB64 = parts[0]!;
+  const authTagB64 = parts[1]!;
+  const encryptedB64 = parts[2]!;
   const key = Buffer.from(keyHex, "hex");
   const iv = Buffer.from(ivB64, "base64");
   const authTag = Buffer.from(authTagB64, "base64");

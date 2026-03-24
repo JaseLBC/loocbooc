@@ -12,11 +12,19 @@
  *  - Stage stale >14 days triggers EventBridge event plm.milestone-overdue.
  */
 
-import { PrismaClient, PLMStage, PLMRecord, PLMMilestone, PLMCostEntry, PLMSampleRound, Prisma } from "@prisma/client";
-import {
-  EventBridgeClient,
-  PutEventsCommand,
-} from "@aws-sdk/client-eventbridge";
+import { prisma, Prisma } from "@loocbooc/database";
+
+// PLMStage enum from Prisma schema — must be imported from generated client
+import type { $Enums } from "@loocbooc/database/generated/client";
+type PLMStage = $Enums.PLMStage;
+
+// Model types
+type PLMRecord = Prisma.PLMRecordGetPayload<Record<string, never>>;
+type PLMMilestone = Prisma.PLMMilestoneGetPayload<Record<string, never>>;
+type PLMCostEntry = Prisma.PLMCostEntryGetPayload<Record<string, never>>;
+type PLMSampleRound = Prisma.PLMSampleRoundGetPayload<Record<string, never>>;
+// EventBridge client - lazy import to avoid bundling if not used
+const getEventBridge = () => import("@aws-sdk/client-eventbridge");
 
 // ─────────────────────────────────────────────
 // Types
@@ -25,38 +33,38 @@ import {
 export interface CreatePLMRecordInput {
   styleName: string;
   styleCode: string;
-  season?: string;
-  targetCost?: string | number; // passed as string to preserve decimal precision
-  manufacturerId?: string;
-  assignedTo?: string;
-  notes?: string;
-  skuId?: string;
+  season?: string | undefined;
+  targetCost?: string | number | undefined; // passed as string to preserve decimal precision
+  manufacturerId?: string | undefined;
+  assignedTo?: string | undefined;
+  notes?: string | undefined;
+  skuId?: string | undefined;
 }
 
 export interface AdvanceStageInput {
   newStage: PLMStage;
   userId: string;
-  notes?: string;
+  notes?: string | undefined;
 }
 
 export interface CostEntryInput {
-  entryType: "fabric" | "trim" | "labour" | "shipping" | "duty" | "total" | string;
+  entryType: "fabric" | "trim" | "labour" | "SHIPPING" | "duty" | "total" | string;
   amount: string | number; // string preferred to avoid float rounding
-  colourway?: string;
-  currency?: string;
-  notes?: string;
-  recordedBy?: string;
+  colourway?: string | undefined;
+  currency?: string | undefined;
+  notes?: string | undefined;
+  recordedBy?: string | undefined;
 }
 
 export interface SampleRoundInput {
   roundNumber: number;
-  shippedAt?: Date;
-  trackingNumber?: string;
-  carrier?: string;
-  receivedAt?: Date;
-  fitNotes?: string;
-  fitApproved?: boolean;
-  adjustments?: string;
+  shippedAt?: Date | undefined;
+  trackingNumber?: string | undefined;
+  carrier?: string | undefined;
+  receivedAt?: Date | undefined;
+  fitNotes?: string | undefined;
+  fitApproved?: boolean | undefined;
+  adjustments?: string | undefined;
 }
 
 export interface PLMDashboardStageGroup {
@@ -138,9 +146,17 @@ const EVENT_BUS_NAME = process.env.EVENT_BUS_NAME ?? "loocbooc-events";
 // Singleton clients
 // ─────────────────────────────────────────────
 
-const eventBridge = new EventBridgeClient({
-  region: process.env.AWS_REGION ?? "ap-southeast-2",
-});
+// EventBridge client is lazily initialized
+let eventBridgeClient: any;
+async function getEventBridgeClient() {
+  if (!eventBridgeClient) {
+    const { EventBridgeClient } = await getEventBridge();
+    eventBridgeClient = new EventBridgeClient({
+      region: process.env.AWS_REGION ?? "ap-southeast-2",
+    });
+  }
+  return eventBridgeClient;
+}
 
 // ─────────────────────────────────────────────
 // Helpers
@@ -190,7 +206,9 @@ async function emitEvent(
   detail: Record<string, unknown>
 ): Promise<void> {
   try {
-    await eventBridge.send(
+    const client = await getEventBridgeClient();
+    const { PutEventsCommand } = await getEventBridge();
+    await client.send(
       new PutEventsCommand({
         Entries: [
           {
@@ -213,6 +231,8 @@ async function emitEvent(
 // Service
 // ─────────────────────────────────────────────
 
+type PrismaClient = typeof prisma;
+
 export class PLMService {
   constructor(private readonly db: PrismaClient) {}
 
@@ -233,14 +253,14 @@ export class PLMService {
       ? new Prisma.Decimal(data.targetCost)
       : null;
 
-    const record = await this.db.$transaction(async (tx) => {
+    const record = await this.db.$transaction(async (tx: Prisma.TransactionClient) => {
       const created = await tx.pLMRecord.create({
         data: {
           brandId,
           styleName: data.styleName,
           styleCode: data.styleCode,
           season: data.season ?? null,
-          stage: PLMStage.DESIGN,
+          stage: "DESIGN",
           targetCost,
           manufacturerId: data.manufacturerId ?? null,
           assignedTo: data.assignedTo ?? null,
@@ -256,7 +276,7 @@ export class PLMService {
       await tx.pLMMilestone.create({
         data: {
           plmRecordId: created.id,
-          stage: PLMStage.DESIGN,
+          stage: "DESIGN",
           completedAt: new Date(),
           notes: "Style record created",
         },
@@ -292,7 +312,7 @@ export class PLMService {
     const stageAge = daysSince(existing.updatedAt);
     const wasOverdue = stageAge >= OVERDUE_DAYS;
 
-    const updated = await this.db.$transaction(async (tx) => {
+    const updated = await this.db.$transaction(async (tx: Prisma.TransactionClient) => {
       // Mark the completed stage milestone
       await tx.pLMMilestone.create({
         data: {
@@ -368,12 +388,12 @@ export class PLMService {
     });
 
     let currentCost: Prisma.Decimal | null = null;
-    const totalEntry = allEntries.find((e) => e.entryType === "total");
+    const totalEntry = allEntries.find((e: PLMCostEntry) => e.entryType === "total");
     if (totalEntry) {
       currentCost = totalEntry.amount;
     } else {
       const sum = allEntries.reduce(
-        (acc, e) => acc.plus(e.amount),
+        (acc: Prisma.Decimal, e: PLMCostEntry) => acc.plus(e.amount),
         new Prisma.Decimal(0)
       );
       currentCost = allEntries.length > 0 ? sum : null;
@@ -498,8 +518,8 @@ export class PLMService {
       })
     );
 
-    const costFlaggedCount = records.filter((r) => r.costFlag).length;
-    const overdueCount = records.filter((r) => daysSince(r.updatedAt) >= OVERDUE_DAYS).length;
+    const costFlaggedCount = records.filter((r: PLMRecord) => r.costFlag).length;
+    const overdueCount = records.filter((r: PLMRecord) => daysSince(r.updatedAt) >= OVERDUE_DAYS).length;
 
     return {
       brandId,
@@ -554,14 +574,14 @@ export class PLMService {
       where: {
         brandId,
         updatedAt: { lte: cutoff },
-        stage: { not: PLMStage.DELIVERED },
+        stage: { not: "DELIVERED" },
         // Exclude CANCELLED — those aren't overdue, they're done
-        NOT: { stage: PLMStage.CANCELLED },
+        NOT: { stage: "CANCELLED" },
       },
       orderBy: { updatedAt: "asc" }, // oldest first = most overdue
     });
 
-    return records.map((r) => ({
+    return records.map((r: PLMRecord) => ({
       id: r.id,
       styleName: r.styleName,
       styleCode: r.styleCode,
@@ -671,7 +691,7 @@ export class PLMService {
         ...(brandId ? { brandId } : {}),
         updatedAt: { lte: cutoff },
         stage: {
-          notIn: [PLMStage.DELIVERED, PLMStage.CANCELLED],
+          notIn: ["DELIVERED", "CANCELLED"],
         },
       },
     });
