@@ -4,9 +4,10 @@
  */
 
 import React, { useState } from 'react';
+import { SizeQuiz } from './SizeQuiz';
 
 export function AvatarCreator({ onSave, onCancel, initialData }) {
-  const [mode, setMode] = useState('measurements'); // 'measurements' | 'photos'
+  const [mode, setMode] = useState('choose'); // 'choose' | 'measurements' | 'photos' | 'quiz'
   const [measurements, setMeasurements] = useState(initialData?.measurements || {
     height: '',
     weight: '',
@@ -164,6 +165,82 @@ export function AvatarCreator({ onSave, onCancel, initialData }) {
       marginTop: '4px'
     }
   };
+
+  // Handle quiz completion
+  const handleQuizComplete = (quizMeasurements) => {
+    setMeasurements({
+      height: quizMeasurements.height.toString(),
+      bust: quizMeasurements.bust.toString(),
+      waist: quizMeasurements.waist.toString(),
+      hips: quizMeasurements.hips.toString(),
+      weight: '',
+      inseam: '',
+      shoulders: '',
+      armLength: ''
+    });
+    setBodyType(quizMeasurements.bodyType || '');
+    setMode('measurements'); // Switch to measurements view to allow editing
+  };
+
+  // Choose mode - initial selection
+  if (mode === 'choose') {
+    return (
+      <div style={styles.container}>
+        <h2 style={styles.title}>Create Your Avatar</h2>
+        <p style={styles.subtitle}>
+          Choose how you'd like to set up your measurements
+        </p>
+        
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <button
+            style={{ ...styles.button(true), width: '100%', textAlign: 'left', padding: '20px' }}
+            onClick={() => setMode('quiz')}
+          >
+            🎯 Quick Size Quiz (2 min)
+            <div style={{ fontSize: '12px', fontWeight: 'normal', marginTop: '4px', opacity: 0.8 }}>
+              Answer a few questions — we'll estimate your measurements
+            </div>
+          </button>
+          
+          <button
+            style={{ ...styles.button(false), width: '100%', textAlign: 'left', padding: '20px', border: '1px solid #d9d5ce' }}
+            onClick={() => setMode('measurements')}
+          >
+            📏 Enter Measurements
+            <div style={{ fontSize: '12px', fontWeight: 'normal', marginTop: '4px', color: '#6b5d4d' }}>
+              Most accurate if you know your bust, waist, and hips
+            </div>
+          </button>
+          
+          <button
+            style={{ ...styles.button(false), width: '100%', textAlign: 'left', padding: '20px', border: '1px solid #d9d5ce' }}
+            onClick={() => setMode('photos')}
+          >
+            📸 Upload Photos
+            <div style={{ fontSize: '12px', fontWeight: 'normal', marginTop: '4px', color: '#6b5d4d' }}>
+              AI estimates measurements from your photos
+            </div>
+          </button>
+        </div>
+        
+        {onCancel && (
+          <button style={{ ...styles.button(false), marginTop: '24px' }} onClick={onCancel}>
+            Cancel
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  // Quiz mode
+  if (mode === 'quiz') {
+    return (
+      <SizeQuiz 
+        onComplete={handleQuizComplete}
+        onCancel={() => setMode('choose')}
+      />
+    );
+  }
 
   return (
     <div style={styles.container}>
