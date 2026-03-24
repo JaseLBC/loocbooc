@@ -9,6 +9,7 @@ import avatarRoutes from './routes/avatar.js';
 import garmentRoutes from './routes/garment.js';
 import tryonRoutes from './routes/tryon.js';
 import embedRoutes from './routes/embed.js';
+import analyticsRoutes from './routes/analytics.js';
 
 const fastify = Fastify({
   logger: true
@@ -34,6 +35,7 @@ fastify.register(authRoutes, { prefix: '/api/auth' });
 fastify.register(avatarRoutes, { prefix: '/api/avatar' });
 fastify.register(garmentRoutes, { prefix: '/api/garment' });
 fastify.register(tryonRoutes, { prefix: '/api/tryon' });
+fastify.register(analyticsRoutes, { prefix: '/api/analytics' });
 fastify.register(embedRoutes); // Embed routes at root for /embed/* paths
 
 // Start server
