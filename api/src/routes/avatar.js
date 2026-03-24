@@ -9,6 +9,7 @@
 import { supabase, isConfigured } from '../services/supabase.js';
 import { memoryStore } from '../services/memory-store.js';
 import { generateAvatarFromMeasurements, generateAvatarFromPhotos } from '../services/avatar-ai.js';
+import { analyzeBodyType } from '../services/body-type.js';
 
 // Use memory store in dev, Supabase in production
 const useMemory = !isConfigured;
@@ -202,5 +203,25 @@ export default async function avatarRoutes(fastify) {
     }
     
     return { success: true, message: 'Avatar deleted' };
+  });
+  
+  // Analyze body type from measurements
+  fastify.post('/body-type', async (request, reply) => {
+    const { bust, waist, hips } = request.body;
+    
+    if (!bust || !waist || !hips) {
+      return reply.status(400).send({ error: 'bust, waist, and hips measurements required' });
+    }
+    
+    const analysis = analyzeBodyType({ bust, waist, hips });
+    
+    return {
+      bodyType: analysis.type,
+      confidence: analysis.confidence,
+      description: analysis.description,
+      flattering: analysis.flattering,
+      avoid: analysis.avoid,
+      ratios: analysis.ratios
+    };
   });
 }
