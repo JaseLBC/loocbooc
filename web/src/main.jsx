@@ -226,7 +226,7 @@ function DeveloperPreview() {
       <section style={styles.status}>
         <div style={styles.statusTitle}>✓ API Status: Running</div>
         <p style={{ fontSize: '14px', color: '#2e7d32' }}>
-          Backend is live at localhost:3000. Database pending Supabase setup.
+          Backend is live. Database pending Supabase setup.
         </p>
       </section>
 

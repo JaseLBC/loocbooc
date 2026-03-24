@@ -21,7 +21,7 @@ const fastify = Fastify({
 // Plugins
 await fastify.register(cors, {
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://loocbooc.com', /\.myshopify\.com$/]
+    ? ['https://loocbooc.com', 'https://loocbooc-web.onrender.com', /\.myshopify\.com$/, /\.onrender\.com$/]
     : true,
   credentials: true
 });

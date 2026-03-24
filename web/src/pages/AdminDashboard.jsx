@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../config';
 
 export function AdminDashboard({ shop = 'charcoal-clothing.myshopify.com' }) {
   const [data, setData] = useState(null);
@@ -22,7 +23,7 @@ export function AdminDashboard({ shop = 'charcoal-clothing.myshopify.com' }) {
   const loadDashboard = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/merchant/dashboard/${shop}`);
+      const res = await fetch(`${API_BASE_URL}/api/merchant/dashboard/${shop}`);
       const result = await res.json();
       setData(result);
       setRoiResult(result.projectedROI);
@@ -35,7 +36,7 @@ export function AdminDashboard({ shop = 'charcoal-clothing.myshopify.com' }) {
 
   const calculateROI = async () => {
     try {
-      const res = await fetch('/api/merchant/roi', {
+      const res = await fetch(`${API_BASE_URL}/api/merchant/roi`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(roiParams)

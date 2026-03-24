@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { TryOnViewer } from '../components/TryOnViewer';
+import { API_BASE_URL } from '../config';
 
 export function PitchPage() {
   const [roiData, setRoiData] = useState(null);
@@ -15,7 +16,7 @@ export function PitchPage() {
 
   useEffect(() => {
     // Fetch example ROI calculation
-    fetch('/api/merchant/roi', {
+    fetch(`${API_BASE_URL}/api/merchant/roi`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -414,7 +415,7 @@ export function PitchPage() {
             onSubmit={async (e) => {
               e.preventDefault();
               try {
-                const res = await fetch('/api/waitlist/join', {
+                const res = await fetch(`${API_BASE_URL}/api/waitlist/join`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ email, type: userType })
