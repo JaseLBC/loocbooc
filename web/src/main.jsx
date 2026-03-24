@@ -3,14 +3,39 @@ import { createRoot } from 'react-dom/client';
 import { TryOnModal } from './components/TryOnModal';
 import { TryOnViewer } from './components/TryOnViewer';
 import { AvatarCreator } from './components/AvatarCreator';
+import { MerchantDashboard } from './components/MerchantDashboard';
+import { DemoPage } from './pages/Demo';
+
+// Simple hash router
+function App() {
+  const [route, setRoute] = useState(window.location.hash || '#/');
+  
+  // Listen for hash changes
+  React.useEffect(() => {
+    const handleHashChange = () => setRoute(window.location.hash || '#/');
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  // Route matching
+  if (route === '#/demo' || route === '#demo') {
+    return <DemoPage />;
+  }
+  
+  if (route === '#/dashboard' || route === '#dashboard') {
+    return <MerchantDashboard shop="charcoal-clothing.myshopify.com" apiBaseUrl="http://localhost:3000/api" />;
+  }
+
+  // Default: Developer preview
+  return <DeveloperPreview />;
+}
 
 // Demo product for testing
 const DEMO_PRODUCT = {
   id: '123456',
   title: 'Charcoal Linen Midi Dress',
   images: [
-    'https://cdn.shopify.com/s/files/1/0000/0001/products/dress-front.jpg',
-    'https://cdn.shopify.com/s/files/1/0000/0001/products/dress-back.jpg',
+    'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=400&h=600&fit=crop',
   ],
   variants: [
     { id: '1', option1: 'XS', title: 'XS' },
@@ -33,7 +58,7 @@ const DEMO_AVATAR = {
   }
 };
 
-function App() {
+function DeveloperPreview() {
   const [showModal, setShowModal] = useState(false);
   const [showCreator, setShowCreator] = useState(false);
   const [avatar, setAvatar] = useState(DEMO_AVATAR);
@@ -42,7 +67,8 @@ function App() {
     container: {
       maxWidth: '1200px',
       margin: '0 auto',
-      padding: '40px 20px'
+      padding: '40px 20px',
+      fontFamily: 'Inter, -apple-system, sans-serif'
     },
     header: {
       textAlign: 'center',
@@ -52,11 +78,26 @@ function App() {
       fontSize: '32px',
       fontWeight: '700',
       letterSpacing: '-1px',
-      marginBottom: '8px'
+      marginBottom: '8px',
+      color: '#3d3129'
     },
     tagline: {
       fontSize: '16px',
       color: '#6b5d4d'
+    },
+    nav: {
+      display: 'flex',
+      justifyContent: 'center',
+      gap: '16px',
+      marginTop: '24px'
+    },
+    navLink: {
+      padding: '8px 16px',
+      background: '#f5f5f5',
+      color: '#3d3129',
+      textDecoration: 'none',
+      fontSize: '13px',
+      fontWeight: '600'
     },
     section: {
       marginBottom: '60px'
@@ -82,7 +123,8 @@ function App() {
     cardTitle: {
       fontSize: '18px',
       fontWeight: '600',
-      marginBottom: '12px'
+      marginBottom: '12px',
+      color: '#3d3129'
     },
     cardDesc: {
       fontSize: '14px',
@@ -93,7 +135,7 @@ function App() {
     button: {
       padding: '14px 28px',
       background: '#3d3129',
-      color: '#e5e0d8',
+      color: '#fff',
       border: 'none',
       fontSize: '13px',
       fontWeight: '600',
@@ -124,6 +166,11 @@ function App() {
       <header style={styles.header}>
         <div style={styles.logo}>LOOCBOOC</div>
         <p style={styles.tagline}>Virtual Try-On Platform</p>
+        <nav style={styles.nav}>
+          <a style={styles.navLink} href="#/">Developer</a>
+          <a style={styles.navLink} href="#/demo">Store Demo</a>
+          <a style={styles.navLink} href="#/dashboard">Dashboard</a>
+        </nav>
       </header>
 
       <section style={styles.section}>
@@ -143,8 +190,8 @@ function App() {
           <div style={styles.card}>
             <h3 style={styles.cardTitle}>Avatar Creator</h3>
             <p style={styles.cardDesc}>
-              Standalone avatar creation flow. Supports manual measurements
-              and photo upload (AI coming soon).
+              Standalone avatar creation flow. Supports quiz, manual measurements,
+              and photo upload.
             </p>
             <button style={styles.button} onClick={() => setShowCreator(true)}>
               Create Avatar
@@ -158,13 +205,13 @@ function App() {
         <div style={styles.viewerContainer}>
           <TryOnViewer
             avatar={{ measurements: avatar.measurements }}
-            garment={{ properties: { fit: 'regular' } }}
+            garment={{ properties: { category: 'dress', fit: 'regular' } }}
             size="M"
             color="#2d2519"
             style={{ height: '400px' }}
           />
           <p style={{ marginTop: '16px', fontSize: '13px', color: '#6b5d4d', textAlign: 'center' }}>
-            Drag to rotate • Scroll to zoom • Placeholder model shown
+            Drag to rotate • Scroll to zoom • Parametric body model
           </p>
         </div>
       </section>
